@@ -1,6 +1,8 @@
 import os
 import logging
 from jinja2 import Environment, FileSystemLoader
+from datetime import datetime, timedelta
+from urllib.parse import parse_qs
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -12,6 +14,28 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
 template = jinja_env.get_template('index.html')
+
+def parse_cookies(cookie_header):
+    """Parse cookies from Cookie header string
+    
+    Parameters
+    ----------
+    cookie_header: str
+        The Cookie header value
+    
+    Returns
+    -------
+    dict
+        Dictionary of cookie name-value pairs
+    """
+    cookies = {}
+    if cookie_header:
+        for cookie in cookie_header.split(';'):
+            cookie = cookie.strip()
+            if '=' in cookie:
+                name, value = cookie.split('=', 1)
+                cookies[name] = value
+    return cookies
 
 def lambda_handler(event, context):
     """Sample Lambda function which returns an HTML response rendered by Jinja2
@@ -35,13 +59,54 @@ def lambda_handler(event, context):
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
 
-    # Render the template
-    html_content = template.render(message="Hello World")
-
+    # Get cookies from the request
+    headers = event.get('headers', {})
+    cookie_header = headers.get('Cookie', headers.get('cookie', ''))
+    cookies = parse_cookies(cookie_header)
+    
+    # Get current time
+    current_time = datetime.utcnow()
+    
+    # Parse visit counter and last visit timestamp
+    visits = int(cookies.get('visits', 0))
+    last_visit_str = cookies.get('last_visit', '')
+    
+    # Increment visits
+    visits += 1
+    
+    # Format last visit for display
+    if last_visit_str:
+        try:
+            last_visit_dt = datetime.strptime(last_visit_str, '%Y-%m-%d %H:%M:%S')
+            last_visit = last_visit_dt.strftime('%Y-%m-%d %H:%M:%S')
+        except ValueError:
+            last_visit = 'Never'
+    else:
+        last_visit = 'Never'
+    
+    # Update last_visit to current time
+    current_time_str = current_time.strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Render the template with visit information
+    html_content = template.render(
+        message="Hello World",
+        visits=visits,
+        last_visit=last_visit
+    )
+    
+    # Set cookie expiration (1 year from now)
+    expires = (current_time + timedelta(days=365)).strftime('%a, %d %b %Y %H:%M:%S GMT')
+    
     return {
         "statusCode": 200,
         "body": html_content,
         "headers": {
             "Content-Type": "text/html"
+        },
+        "multiValueHeaders": {
+            "Set-Cookie": [
+                f"visits={visits}; Expires={expires}; Path=/",
+                f"last_visit={current_time_str}; Expires={expires}; Path=/"
+            ]
         }
     }
