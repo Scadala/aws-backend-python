@@ -46,9 +46,9 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event: dict, required
-        API Gateway Lambda Proxy Input Format
+        API Gateway Lambda Proxy Input Format (v2)
 
-        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
+        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
 
     context: object, required
         Lambda Context runtime methods and attributes
@@ -57,9 +57,9 @@ def lambda_handler(event, context):
 
     Returns
     ------
-    API Gateway Lambda Proxy Output Format: dict
+    API Gateway Lambda Proxy Output Format (v2): dict
 
-        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
+        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
     """
 
     # Get cookies from the request
@@ -111,10 +111,8 @@ def lambda_handler(event, context):
         "headers": {
             "Content-Type": "text/html"
         },
-        "multiValueHeaders": {
-            "Set-Cookie": [
-                f"visits={visits}; Expires={expires}; Path=/",
-                f"last_visit={quote(current_time_str)}; Expires={expires}; Path=/"
-            ]
-        }
+        "cookies": [
+            f"visits={visits}; Expires={expires}; Path=/",
+            f"last_visit={quote(current_time_str)}; Expires={expires}; Path=/"
+        ]
     }
