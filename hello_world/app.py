@@ -112,7 +112,7 @@ def lambda_handler(event, context):
             "Content-Type": "text/html"
         },
         "cookies": [
-            f"visits={visits}; Expires={expires}; Path=/",
-            f"last_visit={quote(current_time_str)}; Expires={expires}; Path=/"
+            f"visits={visits}; Expires={expires}; Path=/; Secure; HttpOnly; SameSite=Lax",
+            f"last_visit={quote(current_time_str)}; Expires={expires}; Path=/; Secure; HttpOnly; SameSite=Lax"
         ]
     }
