@@ -18,7 +18,7 @@ Resources:
   HelloWorldFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: hello_world/
+      CodeUri: jinja2/
       Handler: app.lambda_handler
       Runtime: !Ref PythonRuntime
       Architectures:
@@ -28,6 +28,20 @@ Resources:
           Type: HttpApi
           Properties:
             Path: /hello
+            Method: get
+  IndexFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: jinja2/
+      Handler: index.lambda_handler
+      Runtime: !Ref PythonRuntime
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: HttpApi
+          Properties:
+            Path: /
             Method: get
 
 Outputs:

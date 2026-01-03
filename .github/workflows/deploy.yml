@@ -19,10 +19,19 @@ jobs:
       - uses: astral-sh/setup-uv@v7.1.6
         with:
           version: "0.9.21"
-      - run: uv export --directory hello_world --output-file requirements.txt
+      - run: uv export --directory jinja2 --output-file requirements.txt
       - uses: aws-actions/configure-aws-credentials@v5.1.1
         with:
           aws-region: eu-central-1
           role-to-assume: arn:aws:iam::796401245269:role/github
-      - run: sam build --parameter-overrides PythonRuntime=python"$(cat .python-version)"
-      - run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --resolve-s3 --parameter-overrides PythonRuntime=python"$(cat .python-version)"
+      - run: >
+          sam build
+          --parameter-overrides
+          PythonRuntime="python$(cat .python-version)"
+      - run: >
+          sam deploy
+          --no-confirm-changeset
+          --no-fail-on-empty-changeset
+          --resolve-s3
+          --parameter-overrides
+          PythonRuntime="python$(cat .python-version)"
