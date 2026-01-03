@@ -1,10 +1,10 @@
 import os
 import logging
 from jinja2 import Environment, FileSystemLoader
+from datetime import datetime
 
 # Set up logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 # Set up Jinja2 environment to load templates from the templates directory
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
@@ -19,9 +19,9 @@ def lambda_handler(event, context):
     Parameters
     ----------
     event: dict, required
-        API Gateway Lambda Proxy Input Format
+        API Gateway Lambda Proxy Input Format (v2)
 
-        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
+        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
 
     context: object, required
         Lambda Context runtime methods and attributes
@@ -30,18 +30,29 @@ def lambda_handler(event, context):
 
     Returns
     ------
-    API Gateway Lambda Proxy Output Format: dict
+    API Gateway Lambda Proxy Output Format (v2): dict
 
-        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
+        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
     """
-
-    # Render the template
-    html_content = template.render(message="Hello World")
-
+    logger.info("execution started", extra={"event": event})
+    cookies = {cookie.split('=')[0]: cookie.split('=')[1] for cookie in event.get('cookies', []) if '=' in cookie}
+    logger.info("cookies", extra={"cookies": cookies})
+        
+    # Render the template with visit information
+    html_content = template.render(
+        message="Hello World",
+        visits=cookies.get("visits", 0),
+        last_visit=cookies.get("last_visit", "never")
+    )
+    
+    cookies["visits"] = int(cookies.get("visits", 0)) + 1
+    cookies["last_visit"] = datetime.utcnow().isoformat()
     return {
         "statusCode": 200,
+        "isBase64Encoded": False,
         "body": html_content,
         "headers": {
             "Content-Type": "text/html"
-        }
+        },
+        "cookies" : [f"{k}={v}" for k,v in cookies.items()],
     }
