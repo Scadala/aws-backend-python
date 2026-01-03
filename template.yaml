@@ -5,6 +5,10 @@ Description: >
 
   Sample SAM Template for aws-backend-python
 
+Parameters:
+  PythonRuntime:
+    Type: String
+
 Globals:
   Function:
     Timeout: 3
@@ -16,7 +20,7 @@ Resources:
     Properties:
       CodeUri: hello_world/
       Handler: app.lambda_handler
-      Runtime: python3.9
+      Runtime: !Ref PythonRuntime
       Architectures:
         - x86_64
       Events:
