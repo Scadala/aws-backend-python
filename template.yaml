@@ -17,6 +17,8 @@ Globals:
 Resources:
   HelloWorldFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
     Properties:
       CodeUri: hello_world/
       Handler: app.lambda_handler
