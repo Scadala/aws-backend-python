@@ -1,7 +1,20 @@
-import json
+import os
+import logging
+from jinja2 import Environment, FileSystemLoader
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# Set up Jinja2 environment to load templates from the templates directory
+template_dir = os.path.join(os.path.dirname(__file__), 'templates')
+jinja_env = Environment(loader=FileSystemLoader(template_dir))
+
+# Load the template once at module initialization for better performance
+template = jinja_env.get_template('index.html')
 
 def lambda_handler(event, context):
-    """Sample Lambda function which returns a simple greeting message
+    """Sample Lambda function which returns an HTML response rendered by Jinja2
 
     Parameters
     ----------
@@ -22,9 +35,13 @@ def lambda_handler(event, context):
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
 
+    # Render the template
+    html_content = template.render(message="Hello World")
+
     return {
         "statusCode": 200,
-        "body": json.dumps({
-            "message": "hello world",
-        }),
+        "body": html_content,
+        "headers": {
+            "Content-Type": "text/html"
+        }
     }
