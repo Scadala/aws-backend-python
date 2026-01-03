@@ -1,5 +1,10 @@
 import os
+import logging
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 # Set up Jinja2 environment to load templates from the templates directory
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
@@ -8,7 +13,8 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 # Load the template once at module initialization for better performance
 try:
     template = jinja_env.get_template('index.html')
-except TemplateNotFound:
+except TemplateNotFound as e:
+    logger.error(f"Template not found during initialization: {e}")
     template = None
 
 def lambda_handler(event, context):
@@ -37,7 +43,7 @@ def lambda_handler(event, context):
     if template is None:
         return {
             "statusCode": 500,
-            "body": "<h1>Internal Server Error: Template not found</h1>",
+            "body": "<h1>Internal Server Error</h1>",
             "headers": {
                 "Content-Type": "text/html"
             }
