@@ -1,5 +1,4 @@
-name: Deploy AWS SAM Application
-
+---
 on:
   push:
     branches:
@@ -10,19 +9,18 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       id-token: write
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6.0.1      
+      - uses: actions/checkout@v6.0.1
+      - uses: astral-sh/setup-uv@v7.1.6
+        with:
+          enable-cache: false
       - uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: eu-central-1
           role-to-assume: arn:aws:iam::796401245269:role/github
-      - name: Build SAM application
-        run: sam build
-      - name: Deploy SAM application
-        run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --resolve-s3
+      - run: sam build
+      - run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --resolve-s3
