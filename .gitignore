@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# AWS SAM
+.aws-sam/
+samconfig.toml.bak
