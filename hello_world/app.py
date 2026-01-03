@@ -1,9 +1,15 @@
 import os
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 
 # Set up Jinja2 environment to load templates from the templates directory
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
+
+# Load the template once at module initialization for better performance
+try:
+    template = jinja_env.get_template('index.html')
+except TemplateNotFound:
+    template = None
 
 def lambda_handler(event, context):
     """Sample Lambda function which returns an HTML response rendered by Jinja2
@@ -27,8 +33,17 @@ def lambda_handler(event, context):
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
     """
 
-    # Load and render the template
-    template = jinja_env.get_template('index.html')
+    # Check if template was loaded successfully
+    if template is None:
+        return {
+            "statusCode": 500,
+            "body": "<h1>Internal Server Error: Template not found</h1>",
+            "headers": {
+                "Content-Type": "text/html"
+            }
+        }
+
+    # Render the template
     html_content = template.render(message="Hello World")
 
     return {
