@@ -8,6 +8,9 @@ from urllib.parse import quote, unquote
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+# Constants
+COOKIE_EXPIRATION_DAYS = 365
+
 # Set up Jinja2 environment to load templates from the templates directory
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
@@ -61,12 +64,9 @@ def lambda_handler(event, context):
 
     # Get cookies from the request
     headers = event.get('headers', {})
-    # Handle case-insensitive header lookup
-    cookie_header = ''
-    for key, value in headers.items():
-        if key.lower() == 'cookie':
-            cookie_header = value
-            break
+    # Handle case-insensitive header lookup by creating a lowercase key mapping
+    headers_lower = {k.lower(): v for k, v in headers.items()}
+    cookie_header = headers_lower.get('cookie', '')
     cookies = parse_cookies(cookie_header)
     
     # Get current time
@@ -83,7 +83,7 @@ def lambda_handler(event, context):
     last_visit = 'Never'
     if last_visit_str:
         try:
-            # Validate the format by parsing
+            # Validate the format by parsing - result is discarded as we only need validation
             datetime.strptime(last_visit_str, '%Y-%m-%d %H:%M:%S')
             last_visit = last_visit_str
         except ValueError:
@@ -103,7 +103,7 @@ def lambda_handler(event, context):
     )
     
     # Set cookie expiration (1 year from now)
-    expires = (current_time + timedelta(days=365)).strftime('%a, %d %b %Y %H:%M:%S GMT')
+    expires = (current_time + timedelta(days=COOKIE_EXPIRATION_DAYS)).strftime('%a, %d %b %Y %H:%M:%S GMT')
     
     return {
         "statusCode": 200,
