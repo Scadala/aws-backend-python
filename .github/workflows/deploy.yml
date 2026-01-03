@@ -16,6 +16,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6.0.1
       - uses: actions/setup-python@v6.1.0
+      - uses: astral-sh/setup-uv@v7.1.6
+      - run: uv export --directory hello_world --output-file requirements.txt
       - uses: aws-actions/configure-aws-credentials@v5.1.1
         with:
           aws-region: eu-central-1
