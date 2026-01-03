@@ -34,7 +34,7 @@ def parse_cookies(cookie_header):
             cookie = cookie.strip()
             if '=' in cookie:
                 name, value = cookie.split('=', 1)
-                cookies[name] = value
+                cookies[name.strip()] = value.strip()
     return cookies
 
 def lambda_handler(event, context):
@@ -61,7 +61,12 @@ def lambda_handler(event, context):
 
     # Get cookies from the request
     headers = event.get('headers', {})
-    cookie_header = headers.get('Cookie', headers.get('cookie', ''))
+    # Handle case-insensitive header lookup
+    cookie_header = ''
+    for key, value in headers.items():
+        if key.lower() == 'cookie':
+            cookie_header = value
+            break
     cookies = parse_cookies(cookie_header)
     
     # Get current time
@@ -73,22 +78,19 @@ def lambda_handler(event, context):
     except (ValueError, TypeError):
         visits = 0
     
-    # Parse last visit timestamp with error handling
+    # Parse last visit timestamp with error handling and validation
     last_visit_str = unquote(cookies.get('last_visit', ''))
-    
-    # Increment visits
-    visits += 1
-    
-    # Validate and use last visit string
+    last_visit = 'Never'
     if last_visit_str:
         try:
             # Validate the format by parsing
             datetime.strptime(last_visit_str, '%Y-%m-%d %H:%M:%S')
             last_visit = last_visit_str
         except ValueError:
-            last_visit = 'Never'
-    else:
-        last_visit = 'Never'
+            pass  # Keep last_visit as 'Never'
+    
+    # Increment visits
+    visits += 1
     
     # Update last_visit to current time
     current_time_str = current_time.strftime('%Y-%m-%d %H:%M:%S')
