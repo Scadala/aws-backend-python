@@ -2,7 +2,7 @@ import os
 import logging
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime, timedelta
-from urllib.parse import parse_qs
+from urllib.parse import quote, unquote
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -67,18 +67,24 @@ def lambda_handler(event, context):
     # Get current time
     current_time = datetime.utcnow()
     
-    # Parse visit counter and last visit timestamp
-    visits = int(cookies.get('visits', 0))
-    last_visit_str = cookies.get('last_visit', '')
+    # Parse visit counter with error handling
+    try:
+        visits = int(cookies.get('visits', 0))
+    except (ValueError, TypeError):
+        visits = 0
+    
+    # Parse last visit timestamp with error handling
+    last_visit_str = unquote(cookies.get('last_visit', ''))
     
     # Increment visits
     visits += 1
     
-    # Format last visit for display
+    # Validate and use last visit string
     if last_visit_str:
         try:
-            last_visit_dt = datetime.strptime(last_visit_str, '%Y-%m-%d %H:%M:%S')
-            last_visit = last_visit_dt.strftime('%Y-%m-%d %H:%M:%S')
+            # Validate the format by parsing
+            datetime.strptime(last_visit_str, '%Y-%m-%d %H:%M:%S')
+            last_visit = last_visit_str
         except ValueError:
             last_visit = 'Never'
     else:
@@ -106,7 +112,7 @@ def lambda_handler(event, context):
         "multiValueHeaders": {
             "Set-Cookie": [
                 f"visits={visits}; Expires={expires}; Path=/",
-                f"last_visit={current_time_str}; Expires={expires}; Path=/"
+                f"last_visit={quote(current_time_str)}; Expires={expires}; Path=/"
             ]
         }
     }
