@@ -1,6 +1,9 @@
 name: Deploy AWS SAM Application
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
@@ -14,24 +17,12 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-      
-      - name: Set up AWS SAM CLI
-        uses: aws-actions/setup-sam@v2
-      
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: actions/checkout@v6.0.1      
+      - uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-region: eu-central-1
           role-to-assume: arn:aws:iam::796401245269:role/github
-      
       - name: Build SAM application
-        run: sam build --use-container
-      
+        run: sam build
       - name: Deploy SAM application
         run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --resolve-s3
