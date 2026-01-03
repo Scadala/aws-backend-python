@@ -65,6 +65,9 @@ def lambda_handler(event, context):
     # Get cookies from the request
     headers = event.get('headers', {})
     # Handle case-insensitive header lookup by creating a lowercase key mapping
+    # In API Gateway v2, headers can be None
+    if headers is None:
+        headers = {}
     headers_lower = {k.lower(): v for k, v in headers.items()}
     cookie_header = headers_lower.get('cookie', '')
     cookies = parse_cookies(cookie_header)
