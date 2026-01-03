@@ -27,11 +27,11 @@ jobs:
       - run: >
           sam build
           --parameter-overrides
-            PythonRuntime="python$(cat .python-version)"
+          PythonRuntime="python$(cat .python-version)"
       - run: >
           sam deploy
           --no-confirm-changeset
           --no-fail-on-empty-changeset
           --resolve-s3
           --parameter-overrides
-            PythonRuntime="python$(cat .python-version)"
+          PythonRuntime="python$(cat .python-version)"
