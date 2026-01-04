@@ -25,7 +25,7 @@ def lambda_handler(event, context):
     
     # Get existing cookies to clear them
     cookies_to_clear = []
-    existing_cookies = event.get('cookies', [])
+    existing_cookies = event.get('cookies') or []
     
     # Clear all session cookies by setting Max-Age=0
     for cookie in existing_cookies:
