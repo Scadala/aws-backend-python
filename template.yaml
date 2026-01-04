@@ -72,6 +72,21 @@ Resources:
             Path: /callback
             Method: get
 
+  LogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: jinja2/
+      Handler: logout.lambda_handler
+      Runtime: !Ref PythonRuntime
+      Architectures:
+        - x86_64
+      Events:
+        Logout:
+          Type: HttpApi
+          Properties:
+            Path: /logout
+            Method: get
+
 Outputs:
   HelloWorldApi:
     Description: "API Gateway endpoint URL"
