@@ -1,9 +1,10 @@
 import json
 import logging
 import boto3
-import requests
 from botocore.exceptions import ClientError
 from urllib.parse import urlencode, quote_plus
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -84,13 +85,20 @@ def lambda_handler(event, context):
     logger.info(f"Exchanging code for token at {token_url}")
     
     try:
-        response = requests.post(
+        # Encode the POST data
+        data = urlencode(token_data).encode('utf-8')
+        
+        # Create the request
+        request = Request(
             token_url,
-            data=token_data,
+            data=data,
             headers={'Accept': 'application/json'}
         )
-        response.raise_for_status()
-        token_response = response.json()
+        
+        # Make the POST request
+        with urlopen(request) as response:
+            response_data = response.read().decode('utf-8')
+            token_response = json.loads(response_data)
         
         logger.info(f"Token exchange successful for ORCID: {token_response.get('orcid', 'unknown')}")
         
@@ -113,7 +121,7 @@ def lambda_handler(event, context):
             "cookies": cookies
         }
         
-    except requests.exceptions.RequestException as e:
+    except (HTTPError, URLError) as e:
         logger.error(f"Error exchanging code for token: {e}")
         return {
             "statusCode": 500,
