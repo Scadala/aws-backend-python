@@ -2,6 +2,7 @@ import os
 import logging
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
+from urllib.parse import unquote_plus
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ def lambda_handler(event, context):
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
     """
     logger.info("execution started", extra={"event": event})
-    session = {cookie.split('=')[0]: cookie.split('=')[1] for cookie in event.get('cookies', []) if '=' in cookie}
+    session = {cookie.split('=')[0]: unquote_plus(cookie.split('=')[1]) for cookie in event.get('cookies', []) if '=' in cookie}
     logger.info("session", extra={"session": session})
         
     # Render the template with visit information

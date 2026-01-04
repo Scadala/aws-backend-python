@@ -3,7 +3,7 @@ import logging
 import boto3
 import requests
 from botocore.exceptions import ClientError
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote_plus
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -92,16 +92,16 @@ def lambda_handler(event, context):
         response.raise_for_status()
         token_response = response.json()
         
-        logger.info(f"Token exchange successful: {token_response}")
+        logger.info(f"Token exchange successful for ORCID: {token_response.get('orcid', 'unknown')}")
         
         # Extract user information from the token response
         name = token_response.get('name', 'ORCID User')
         orcid = token_response.get('orcid', '')
         
-        # Create session cookies
+        # Create session cookies with URL-encoded values
         cookies = [
-            f"name={name}",
-            f"orcid={orcid}"
+            f"name={quote_plus(name)}",
+            f"orcid={quote_plus(orcid)}"
         ]
         
         # Redirect to root path
