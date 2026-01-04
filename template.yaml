@@ -30,6 +30,63 @@ Resources:
             Path: /
             Method: get
 
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: jinja2/
+      Handler: auth.lambda_handler
+      Runtime: !Ref PythonRuntime
+      Architectures:
+        - x86_64
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource: arn:aws:secretsmanager:eu-central-1:796401245269:secret:orcid-Z2L4Nt
+      Events:
+        Auth:
+          Type: HttpApi
+          Properties:
+            Path: /auth
+            Method: get
+
+  CallbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: jinja2/
+      Handler: callback.lambda_handler
+      Runtime: !Ref PythonRuntime
+      Architectures:
+        - x86_64
+      Policies:
+        - Statement:
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+            Resource: arn:aws:secretsmanager:eu-central-1:796401245269:secret:orcid-Z2L4Nt
+      Events:
+        Callback:
+          Type: HttpApi
+          Properties:
+            Path: /callback
+            Method: get
+
+  LogoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: jinja2/
+      Handler: logout.lambda_handler
+      Runtime: !Ref PythonRuntime
+      Architectures:
+        - x86_64
+      Events:
+        Logout:
+          Type: HttpApi
+          Properties:
+            Path: /logout
+            Method: get
+
 Outputs:
   HelloWorldApi:
     Description: "API Gateway endpoint URL"
