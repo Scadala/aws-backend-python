@@ -2,5 +2,6 @@
 name = "hello-world"
 version = "0.1.0"
 dependencies = [
-  "jinja2"
+  "jinja2",
+  "requests"
 ]
