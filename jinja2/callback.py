@@ -92,7 +92,10 @@ def lambda_handler(event, context):
         request = Request(
             token_url,
             data=data,
-            headers={'Accept': 'application/json'}
+            headers={
+                'Accept': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
         )
         
         # Make the POST request
