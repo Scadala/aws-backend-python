@@ -11,7 +11,7 @@ template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
-template = jinja_env.get_template('index.html')
+index_template = jinja_env.get_template('index.html')
 
 def lambda_handler(event, context):
     """Sample Lambda function which returns an HTML response rendered by Jinja2
@@ -35,18 +35,17 @@ def lambda_handler(event, context):
         Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/http-api-develop-integrations-lambda.html
     """
     logger.info("execution started", extra={"event": event})
-    cookies = {cookie.split('=')[0]: cookie.split('=')[1] for cookie in event.get('cookies', []) if '=' in cookie}
-    logger.info("cookies", extra={"cookies": cookies})
+    session = {cookie.split('=')[0]: cookie.split('=')[1] for cookie in event.get('cookies', []) if '=' in cookie}
+    logger.info("session", extra={"session": session})
         
     # Render the template with visit information
-    html_content = template.render(
-        message="Hello World",
-        visits=cookies.get("visits", 0),
-        last_visit=cookies.get("last_visit", "never")
+    html_content = index_template.render(
+        isindex=True,
+        name=session.get("name"),
     )
     
-    cookies["visits"] = int(cookies.get("visits", 0)) + 1
-    cookies["last_visit"] = datetime.utcnow().isoformat()
+    session["visits"] = int(session.get("visits", 0)) + 1
+    session["last_visit"] = datetime.utcnow().isoformat()
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
@@ -54,5 +53,5 @@ def lambda_handler(event, context):
         "headers": {
             "Content-Type": "text/html"
         },
-        "cookies" : [f"{k}={v}" for k,v in cookies.items()],
+        "cookies" : [f"{k}={v}" for k,v in session.items()],
     }
