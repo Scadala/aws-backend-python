@@ -59,8 +59,8 @@ def lambda_handler(event, context):
     
     # Get ORCID client credentials
     credentials = get_orcid_credentials()
-    client_id = credentials.get('client_id')
-    client_secret = credentials.get('client_secret')
+    client_id = credentials.get('id')
+    client_secret = credentials.get('secret')
     
     # Build the redirect URI (same as in auth.py)
     domain = event.get('requestContext', {}).get('domainName', '')

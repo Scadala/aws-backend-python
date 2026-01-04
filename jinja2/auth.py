@@ -41,7 +41,7 @@ def lambda_handler(event, context):
     
     # Get ORCID client credentials
     credentials = get_orcid_credentials()
-    client_id = credentials.get('client_id')
+    client_id = credentials.get('id')
     
     # Build the redirect URI
     # Extract the domain from the request context
