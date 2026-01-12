@@ -9,15 +9,17 @@ from urllib.error import HTTPError, URLError
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Initialize AWS Secrets Manager client
-secrets_client = boto3.client('secretsmanager', region_name='eu-central-1')
+# Initialize AWS SSM client
+ssm_client = boto3.client('ssm', region_name='eu-central-1')
+client_id = "APP-6KSLC9TDGOYVUOTT"
 
-def get_orcid_credentials():
-    """Retrieve ORCID credentials from AWS Secrets Manager"""
-    secret_arn = 'arn:aws:secretsmanager:eu-central-1:796401245269:secret:orcid-Z2L4Nt'
+
+def get_orcid_oauth2_client_secret(client_id:str) -> str:
+    """Retrieve ORCID credentials from AWS SSM Parameter Store"""
+    parameter_arn = 'arn:aws:ssm:eu-central-1:796401245269:parameter/oauth2/orcid.org/0000-0003-2213-3552/' + client_id
     try:
-        response = secrets_client.get_secret_value(SecretId=secret_arn)
-        secret = json.loads(response['SecretString'])
+        response = ssm_client.get_parameter(Name=parameter_arn, WithDecryption=True)
+        secret = response['Parameter']['Value']
         return secret
     except ClientError as e:
         logger.error(f"Error retrieving secret: {e}")
@@ -58,10 +60,7 @@ def lambda_handler(event, context):
             "body": "Missing authorization code"
         }
     
-    # Get ORCID client credentials
-    credentials = get_orcid_credentials()
-    client_id = credentials.get('id')
-    client_secret = credentials.get('secret')
+    client_secret = get_orcid_oauth2_client_secret(client_id)
     
     # Build the redirect URI (same as in auth.py)
     domain = event.get('requestContext', {}).get('domainName', '')

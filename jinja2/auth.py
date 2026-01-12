@@ -7,19 +7,8 @@ from urllib.parse import urlencode
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Initialize AWS Secrets Manager client
-secrets_client = boto3.client('secretsmanager', region_name='eu-central-1')
+client_id = "APP-6KSLC9TDGOYVUOTT"
 
-def get_orcid_credentials():
-    """Retrieve ORCID credentials from AWS Secrets Manager"""
-    secret_arn = 'arn:aws:secretsmanager:eu-central-1:796401245269:secret:orcid-Z2L4Nt'
-    try:
-        response = secrets_client.get_secret_value(SecretId=secret_arn)
-        secret = json.loads(response['SecretString'])
-        return secret
-    except ClientError as e:
-        logger.error(f"Error retrieving secret: {e}")
-        raise
 
 def lambda_handler(event, context):
     """Lambda function to initiate OAuth 2.0 flow with ORCID
@@ -38,10 +27,6 @@ def lambda_handler(event, context):
         Returns a 302 redirect to ORCID authorization URL
     """
     logger.info("Auth flow started", extra={"event": event})
-    
-    # Get ORCID client credentials
-    credentials = get_orcid_credentials()
-    client_id = credentials.get('id')
     
     # Build the redirect URI
     # Extract the domain from the request context
