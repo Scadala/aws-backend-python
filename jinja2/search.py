@@ -43,14 +43,13 @@ def lambda_handler(event, context):
         if "=" in cookie
     }
     logger.info("session", extra={"session": session})
+
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
         "body": index_template.render(
             isindex=True,
             name=session.get("name"),
-            title="Welcome"
-            + (" " + session.get("name") if session.get("name") else ""),
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
