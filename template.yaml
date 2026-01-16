@@ -33,7 +33,7 @@ Resources:
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: jinja2/
+      CodeUri: nodeps/
       Handler: auth.lambda_handler
       Runtime: !Ref PythonRuntime
       Architectures:
@@ -54,7 +54,7 @@ Resources:
   CallbackFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: jinja2/
+      CodeUri: nodeps/
       Handler: callback.lambda_handler
       Runtime: !Ref PythonRuntime
       Architectures:
@@ -75,7 +75,7 @@ Resources:
   LogoutFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: jinja2/
+      CodeUri: nodeps/
       Handler: logout.lambda_handler
       Runtime: !Ref PythonRuntime
       Architectures:
