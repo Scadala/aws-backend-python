@@ -1,4 +1,4 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
   aws-backend-python
@@ -13,6 +13,11 @@ Globals:
   Function:
     Timeout: 3
     MemorySize: 128
+    Runtime: !Ref PythonRuntime
+    LoggingConfig:
+      LogFormat: JSON
+      ApplicationLogLevel: INFO
+      SystemLogLevel: INFO
 
 Resources:
   IndexFunction:
@@ -20,7 +25,6 @@ Resources:
     Properties:
       CodeUri: jinja2/
       Handler: index.lambda_handler
-      Runtime: !Ref PythonRuntime
       Architectures:
         - x86_64
       Events:
@@ -34,7 +38,6 @@ Resources:
     Properties:
       CodeUri: jinja2/
       Handler: search.lambda_handler
-      Runtime: !Ref PythonRuntime
       Architectures:
         - x86_64
       Events:
@@ -49,15 +52,14 @@ Resources:
     Properties:
       CodeUri: nodeps/
       Handler: auth.lambda_handler
-      Runtime: !Ref PythonRuntime
       Architectures:
         - x86_64
       Policies:
         - Statement:
-          - Effect: Allow
-            Action:
-              - ssm:GetParameter
-            Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
       Events:
         Auth:
           Type: HttpApi
@@ -70,15 +72,14 @@ Resources:
     Properties:
       CodeUri: nodeps/
       Handler: callback.lambda_handler
-      Runtime: !Ref PythonRuntime
       Architectures:
         - x86_64
       Policies:
         - Statement:
-          - Effect: Allow
-            Action:
-              - ssm:GetParameter
-            Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
       Events:
         Callback:
           Type: HttpApi
@@ -91,7 +92,6 @@ Resources:
     Properties:
       CodeUri: nodeps/
       Handler: logout.lambda_handler
-      Runtime: !Ref PythonRuntime
       Architectures:
         - x86_64
       Events:

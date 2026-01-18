@@ -3,6 +3,8 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
 from urllib.parse import unquote_plus
+import urllib3
+import json
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -13,6 +15,8 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
 index_template = jinja_env.get_template("index.html")
+
+http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
 
 def lambda_handler(event, context):
@@ -44,12 +48,29 @@ def lambda_handler(event, context):
     }
     logger.info("session", extra={"session": session})
 
+    params = {
+        k: v
+        for k, v in (
+            item.split("=")
+            for item in event.get("rawQueryString", "query=").split("&")
+            if "=" in item
+        )
+    }
+    logger.info("params", extra={"params": params})
+
+    response = http.request(
+        "GET", "https://api.crossref.org/works?" + params.get("query")
+    )
+    data = json.loads(response.data.decode("utf-8"))
+    logger.info("data", extra={"data": data})
+
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
         "body": index_template.render(
             isindex=True,
             name=session.get("name"),
+            title=params.get("query"),
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
