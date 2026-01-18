@@ -105,8 +105,5 @@ def pdate_from_item(item):
         "published-print",
         "published-online",
     ]:
-        if pdatetag in item:
-            dateparts = item[pdatetag]["date-parts"][0]
-            while len(dateparts) < 3:
-                dateparts.append(1)
-            return date(*dateparts[:3])
+        if pdatetag in item and None not in item[pdatetag]["date-parts"][0][:3]:
+            return date(*(item[pdatetag]["date-parts"][0] + [1, 1])[:3])
