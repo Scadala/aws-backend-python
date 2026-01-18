@@ -42,7 +42,7 @@ def lambda_handler(event, context):
         "body": index_template.render(
             isindex=True,
             name=session.get("name"),
-            title=data["message"]["title"][0],
+            title=data["message"].get("title", [None])[0],
             rawPath=event["rawPath"],
             orcweb=None,
             pub=make_pub(data["message"]),
