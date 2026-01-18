@@ -1,0 +1,45 @@
+{% import 'btn.html' as btn %} {% extends "index.html" %} {% block body %}
+<div class="container-fluid overflow-auto list-group">
+    {% if offset and offset > 0 %}
+    <a class="text-center btn btn-primary" href="?query={{ query }}&offset={{ offset - 25 }}">previous page</a>
+    {% endif %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col">citations</th>
+                <th scope="col">date</th>
+                <th scope="col">title</th>
+                <th scope="col">dois</th>
+                <th scope="col">pmids</th>
+                <th scope="col">bibcodes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set count = namespace(value=0) %} {% for pub in pubs %}{% set
+            count.value = count.value + 1 %}
+            <tr>
+                <td scope="row" nowrap>{{ pub.ncits or "" }}</td>
+                <td scope="row" nowrap>{{ pub.pdate or "" }}</td>
+                <td scope="row">{{ pub.title or "" }}</td>
+                <td>
+                    {% for doi in pub.dois or [] %} {{ btn.doi(doi, orcweb) }} {% endfor
+                    %}
+                </td>
+                <td>
+                    {% for pmid in pub.pmids or [] %} {{ btn.pmid(pmid, orcweb) }} {%
+                    endfor %}
+                </td>
+                <td>
+                    {% for bibcode in pub.bibcodes or [] %} {{ btn.bibcode(bibcode,
+                    orcweb) }} {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if count.value > 0 %}
+    <a class="text-center btn btn-primary" href="?query={{ query }}&offset={{ (offset or 0) + 25 }}">next page</a>
+    {% endif %}
+</div>
+
+{% endblock %}

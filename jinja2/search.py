@@ -3,6 +3,9 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
 from urllib.parse import unquote_plus
+import urllib3
+import json
+from dataclasses import dataclass, field
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -12,7 +15,19 @@ template_dir = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
-index_template = jinja_env.get_template("index.html")
+index_template = jinja_env.get_template("query.html")
+
+http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
+
+
+@dataclass
+class Publication:
+    title: str
+    ncits: int = 0
+    pmids: list[int] | None = field(default_factory=list)
+    dois: list[str] | None = field(default_factory=list)
+    pdate: date | None = None
+    bibcodes: list[str] = field(default_factory=list)
 
 
 def lambda_handler(event, context):
@@ -43,14 +58,41 @@ def lambda_handler(event, context):
         if "=" in cookie
     }
     logger.info("session", extra={"session": session})
+
+    params = {
+        k: v
+        for k, v in (
+            item.split("=")
+            for item in event.get("rawQueryString", "query=").split("&")
+            if "=" in item
+        )
+    }
+    logger.info("params", extra={"params": params})
+    url = "https://api.crossref.org/works?" + params.get("query")
+    logger.info("url", extra={"url": url})
+
+    response = http.request(
+        method="GET",
+        url=url,
+    )
+    data = json.loads(response.data.decode("utf-8"))
+    logger.info("data", extra={"data": data})
+
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
         "body": index_template.render(
             isindex=True,
             name=session.get("name"),
-            title="Welcome"
-            + (" " + session.get("name") if session.get("name") else ""),
+            title=params.get("query"),
+            pubs=[
+                Publication(
+                    title=item["title"][0],
+                    dois=[item["DOI"]],
+                    pdate=item.get("published-online"),
+                )
+                for item in data["message"]["items"]
+            ],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
