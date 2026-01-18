@@ -1,7 +1,7 @@
 import os
 import logging
 from jinja2 import Environment, FileSystemLoader
-from datetime import datetime
+from datetime import datetime, date
 from urllib.parse import unquote_plus
 import urllib3
 import json
@@ -68,12 +68,10 @@ def lambda_handler(event, context):
         )
     }
     logger.info("params", extra={"params": params})
-    url = "https://api.crossref.org/works?" + params.get("query")
-    logger.info("url", extra={"url": url})
 
     response = http.request(
         method="GET",
-        url=url,
+        url="https://api.crossref.org/works?query=" + params.get("query"),
     )
     data = json.loads(response.data.decode("utf-8"))
     logger.info("data", extra={"data": data})
@@ -89,7 +87,7 @@ def lambda_handler(event, context):
                 Publication(
                     title=item["title"][0],
                     dois=[item["DOI"]],
-                    pdate=item.get("published-online"),
+                    pdate=pdate_from_item(item),
                 )
                 for item in data["message"]["items"]
             ],
@@ -97,3 +95,15 @@ def lambda_handler(event, context):
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
     }
+
+
+def pdate_from_item(item):
+    for pdatetag in [
+        "issued",
+        "posted",
+        "accepted",
+        "published-print",
+        "published-online",
+    ]:
+        if pdatetag in item and None not in item[pdatetag]["date-parts"][0][:3]:
+            return date(*(item[pdatetag]["date-parts"][0] + [1, 1])[:3])
