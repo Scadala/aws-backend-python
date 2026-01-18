@@ -1,0 +1,74 @@
+{% macro doi(doi, orcweb) -%}
+<div class="btn-group">
+    <a href="{{ url_for('endpoint_doi', doi=doi) }}"
+        class="btn btn-primary {% if orcweb and orcweb.lib_dois[doi] | length > 0 %} btn-success {% endif %}">
+        {{doi}}
+    </a>
+    {% if orcweb %}
+    <a type="button"
+        class="btn btn-primary dropdown-toggle dropdown-toggle-split {% if orcweb.lib_dois[doi] | length > 0 %} btn-success {% endif %}"
+        data-bs-toggle="dropdown" aria-expanded="false">
+        <span class="visually-hidden">Toggle Dropdown</span>
+    </a>
+    <ul class="dropdown-menu">
+        {% for lib in orcweb.libs %}
+        <li>
+            <a class="dropdown-item {% if lib in orcweb.lib_dois[doi] %} text-bg-success {% endif %}"
+                onclick="bookmarkDropDown(this)" data-url="/bookmark/doi.org/{{ doi }}" data-library="{{ lib }}"
+                data-method="{% if lib in orcweb.lib_dois[doi] %}DELETE{% else %}PUT{% endif %}">{{ lib }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{%- endmacro %} {% macro pmid(pmid, orcweb) -%}
+<div class="btn-group">
+    <a href="{{ url_for('endpoint_pmid', pmid=pmid) }}"
+        class="btn btn-primary {% if orcweb and orcweb.lib_pmids[pmid|string] | length > 0 %} btn-success {% endif %}">
+        {{pmid}}
+    </a>
+    {% if orcweb %}
+    <a type="button"
+        class="btn btn-primary dropdown-toggle dropdown-toggle-split {% if orcweb.lib_pmids[pmid|string] | length > 0 %} btn-success {% endif %}"
+        data-bs-toggle="dropdown" aria-expanded="false">
+        <span class="visually-hidden">Toggle Dropdown</span>
+    </a>
+    <ul class="dropdown-menu">
+        {% for lib in orcweb.libs %}
+        <li>
+            <a class="dropdown-item {% if lib in orcweb.lib_pmids[pmid|string] %} text-bg-success {% endif %}"
+                onclick="bookmarkDropDown(this)" data-url="/bookmark/pubmed.ncbi.nlm.nih.gov/{{ pmid }}"
+                data-library="{{ lib }}"
+                data-method="{% if lib in orcweb.lib_pmids[pmid|string] %}DELETE{% else %}PUT{% endif %}">{{ lib }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{%- endmacro %} {% macro bibcode(bibcode, orcweb) -%}
+
+<div class="btn-group">
+    <a href="{{ url_for('endpoint_bibcode', bibcode=bibcode) }}"
+        class="btn btn-primary {% if orcweb and orcweb.lib_bibcodes[bibcode] | length > 0 %} btn-success {% endif %}">
+        {{ bibcode }}
+    </a>
+    {% if orcweb %}
+    <a type="button"
+        class="btn btn-primary dropdown-toggle dropdown-toggle-split {% if orcweb.lib_bibcodes[bibcode] | length > 0 %} btn-success {% endif %}"
+        data-bs-toggle="dropdown" aria-expanded="false">
+        <span class="visually-hidden">Toggle Dropdown</span>
+    </a>
+    <ul class="dropdown-menu">
+        {% for lib in orcweb.libs %}
+        <li>
+            <a class="dropdown-item {% if lib in orcweb.lib_bibcodes[bibcode] %} text-bg-success {% endif %}"
+                onclick="bookmarkDropDown(this)" data-url="/bookmark/ui.adsabs.harvard.edu/abs/{{ bibcode }}"
+                data-library="{{ lib }}"
+                data-method="{% if lib in orcweb.lib_bibcodes[bibcode] %}DELETE{% else %}PUT{% endif %}">{{ lib }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+
+{%- endmacro %}

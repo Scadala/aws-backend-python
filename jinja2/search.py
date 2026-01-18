@@ -14,7 +14,7 @@ template_dir = os.path.join(os.path.dirname(__file__), "templates")
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
-index_template = jinja_env.get_template("index.html")
+index_template = jinja_env.get_template("query.html")
 
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
@@ -71,6 +71,7 @@ def lambda_handler(event, context):
             isindex=True,
             name=session.get("name"),
             title=params.get("query"),
+            pubs=[],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
