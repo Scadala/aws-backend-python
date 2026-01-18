@@ -1,0 +1,345 @@
+{% import 'btn.html' as btn %} {% extends "index.html" %} {% block navextension
+%} {% if name %} {% set lib="default" %}
+<div class="modal fade" id="libraryModal" tabindex="-1" aria-labelledby="libraryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="libraryModalLabel">Libraries</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="list-group">
+                    {% for lib in orcweb.libs %}
+                    <form action="/libs/del">
+                        <input type="hidden" name="lib" value="{{ lib }}" />
+                        <input type="hidden" name="location" value="{{ rawPath }}" />
+                        <a href="#"
+                            class="list-group-item d-flex justify-content-between list-group-item-action lib-{{lib}} {% if lib in inlibs %} active {% endif %}"
+                            onclick="bookmark('{{ lib }}', '{% if lib in inlibs %}DELETE{% else %}PUT{% endif %}')">{{
+                            lib }}<button type="submit" class="btn-close" aria-label="Close"
+                                onclick="event.stopPropagation()"></button></a>
+                    </form>
+                    {% endfor %}
+                </ul>
+
+                <form class="input-group" action="/libs/add">
+                    <input type="text" class="form-control" name="lib" required />
+                    <input type="hidden" name="location" value="{{ rawPath }}" />
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" type="submit">
+                            add library
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="btn-group ms-auto">
+    <button type="button" id="library" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#libraryModal">
+        Library
+    </button>
+    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"
+        aria-expanded="false" id="dropdownbtn">
+        <span class="visually-hidden">Toggle Dropdown</span>
+    </button>
+    <ul class="dropdown-menu" id="dropdownli">
+        {% for lib in orcweb.libs %}
+        <li>
+            <a class="dropdown-item lib-{{ lib }} {% if lib in inlibs %} text-bg-success {% else %} text-bg-primary {% endif %}"
+                href="#" onclick="bookmark('{{ lib }}', '{% if lib in inlibs %}DELETE{% else %}PUT{% endif %}')">{{ lib
+                }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %} {% endblock %} {% block body %}
+
+<script>
+    function bookmark(library, method) {
+        fetch("/bookmark" + window.location.pathname, {
+            method: method,
+            headers: {
+                "Content-type": "application/json",
+                Accept: "application/json",
+            },
+            body: JSON.stringify({ library: library }),
+        });
+        if (method == "PUT") {
+            document
+                .querySelectorAll(`.lib-${library}.dropdown-item`)
+                .forEach((element) => {
+                    element.classList.add("text-bg-success");
+                });
+            document
+                .querySelectorAll(`.lib-${library}.list-group-item`)
+                .forEach((element) => {
+                    element.classList.add("active");
+                });
+            document.querySelectorAll(`.lib-${library}`).forEach((element) => {
+                element.onclick = () => bookmark(library, "DELETE");
+            });
+        } else {
+            document
+                .querySelectorAll(`.lib-${library}.dropdown-item`)
+                .forEach((element) => {
+                    element.classList.remove("text-bg-success");
+                });
+            document
+                .querySelectorAll(`.lib-${library}.list-group-item`)
+                .forEach((element) => {
+                    element.classList.remove("active");
+                });
+            document.querySelectorAll(`.lib-${library}`).forEach((element) => {
+                element.onclick = () => bookmark(library, "PUT");
+            });
+        }
+        handledropdownsuccess();
+    }
+
+    function handledropdownsuccess() {
+        listItems = document.getElementById("dropdownli").querySelectorAll("li");
+
+        const hasSuccessClass = Array.from(listItems).some((li) => {
+            const link = li.querySelector("a"); // Get the <a> inside the <li>
+            return link && link.classList.contains("text-bg-success"); // Check for the class
+        });
+
+        if (hasSuccessClass) {
+            document.getElementById("library").classList.add("btn-success");
+            document.getElementById("dropdownbtn").classList.add("btn-success");
+        } else {
+            document.getElementById("library").classList.remove("btn-success");
+            document.getElementById("dropdownbtn").classList.remove("btn-success");
+        }
+    }
+    handledropdownsuccess();
+</script>
+
+<div class="overflow-auto list-group">
+    <table class="table">
+        <tbody>
+            {% if pub.pdate is not none %}
+            <tr>
+                <th scope="row">published</th>
+                <td>{{ pub.pdate }}</td>
+            </tr>
+            {% endif %} {% if pub.abstract is not none and pub.abstract != "" %}
+            <tr>
+                <th scope="row">abstract</th>
+                <td>{{ pub.abstract }}</td>
+            </tr>
+            {% endif %} {% if pub.same_pmids|length > 0 %}
+            <tr>
+                <th scope="row">same PMIDs</th>
+                <td>
+                    {% for pmid in pub.same_pmids %}
+                    <div>
+                        <a href="pmid/{{ pmid }}">{{ pmid }}</a>
+                    </div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endif %} {% if pub.pmcid is not none %}
+            <tr>
+                <th scope="row">PMCID</th>
+                <td>
+                    <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{{ pub.pmcid }}/" target="_blank">{{ pub.pmcid
+                        }}↗</a>
+                </td>
+            </tr>
+            {% endif %} {% if pub.ads_arxivs is not none and pub.ads_arxivs|length > 0
+            %}
+            <tr>
+                <th scope="row">ArXiv</th>
+                <td>
+                    {% for arx in pub.ads_arxivs %}
+                    <div>
+                        <a href="https://arxiv.org/abs/{{ arx }}" target="_blank">{{ arx }}↗</a>
+                    </div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endif %} {% if pub.same_dois|length > 0 %}
+            <tr>
+                <th scope="row">same DOIs</th>
+                <td>
+                    {% for doi in pub.same_dois %}
+                    <div>
+                        <a href="doi.org/{{ doi }}">{{ doi }}</a>
+                    </div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endif %} {% if pub.bibcodes|length > 0 %}
+            <tr>
+                <th scope="row">same BIBCODEs</th>
+                <td>
+                    {% for bibcode in pub.bibcodes %}
+                    <div>
+                        <a href="bibcode/{{ bibcode }}">{{ bibcode }}</a>
+                    </div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endif %} {% if pub.orcs is not none and pub.orcs|length > 0 %}
+            <tr>
+                <th scope="row">
+                    <img src="https://orcid.org/assets/icons/favicon.ico" alt="ORCID"
+                        style="width: 16px; height: 16px; vertical-align: middle" />
+                    Authors
+                </th>
+                <td>
+                    {% for orc in pub.orcs %}
+                    <div>
+                        <a href="/orcid.org/{{ orc.shortshort }}"><img src="https://orcid.org/assets/icons/favicon.ico"
+                                alt="ORCID" style="width: 16px; height: 16px; vertical-align: middle" />
+                            {{ orc.name }}</a>
+                    </div>
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endif %} {% if pub.doi is not none %}
+            <tr>
+                <th scope="row">doi.org</th>
+                <td>
+                    <a href="http://doi.org/{{ pub.doi }}" target="_blank">http://doi.org/{{ pub.doi }}↗</a>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">api.crossref.org</th>
+                <td>
+                    <a href="https://api.crossref.org/works/{{ pub.doi }}"
+                        target="_blank">https://api.crossref.org/works/{{ pub.doi }}↗</a>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">api.datacite.org</th>
+                <td>
+                    <a href="https://api.datacite.org/dois/{{ pub.doi }}"
+                        target="_blank">https://api.datacite.org/dois/{{ pub.doi }}↗</a>
+                </td>
+            </tr>
+            {% endif %} {% if pub.pmid is not none %}
+            <tr>
+                <th scope="row">efetch</th>
+                <td>
+                    <a href="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.cgi?db=pubmed&id={{ pub.pmid }}"
+                        target="_blank">https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.cgi?db=pubmed&id={{
+                        pub.pmid }}↗</a>
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<div class="accordion accordion-flush">
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#flush-collapseOne"
+                aria-expanded="true" aria-controls="flush-collapseOne">
+                Citations
+            </button>
+        </h2>
+        <div id="flush-collapseOne" class="accordion-collapse collapse show">
+            <div class="accordion-body">
+                <div class="card-body">
+                    <div class="container-fluid overflow-auto list-group">
+                        {% if (offset or 0) > 0 %}
+                        <a class="text-center btn btn-primary" href="?offset={{ offset - 25 }}">previous page</a>
+                        {% endif %}
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">date</th>
+                                    <th scope="col">title</th>
+                                    <th scope="col">doi</th>
+                                    <th scope="col">pmid</th>
+                                    <th scope="col">bibcodes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% set count = namespace(value=0) %} {% for pub in cits %} {%
+                                set count.value = count.value + 1 %}
+                                <tr>
+                                    <td scope="row" nowrap>{{ pub.pdate or "" }}</td>
+                                    <td scope="row">{{ pub.title or "" }}</td>
+                                    <td>
+                                        {% if pub.doi is not none %}{{ btn.doi(pub.doi, orcweb) }}{%
+                                        endif %}
+                                    </td>
+                                    <td>
+                                        {% if pub.pmid is not none %} {{ btn.pmid(pub.pmid, orcweb)
+                                        }} {% endif %}
+                                    </td>
+                                    <td>
+                                        {% for bibcode in pub.bibcodes or [] %} {{
+                                        btn.bibcode(bibcode, orcweb) }} {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% if count.value > 0 %}
+                        <a class="text-center btn btn-primary" href="?offset={{ (offset or 0) + 25 }}">next page</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                data-bs-target="#flush-collapseTwo" aria-expanded="false" aria-controls="flush-collapseTwo">
+                References
+            </button>
+        </h2>
+        <div id="flush-collapseTwo" class="accordion-collapse collapse">
+            <div class="accordion-body">
+                <div class="card-body">
+                    <div class="container-fluid overflow-auto list-group">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">date</th>
+                                    <th scope="col">title</th>
+                                    <th scope="col">doi</th>
+                                    <th scope="col">pmid</th>
+                                    <th scope="col">bibcodes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pub in refs %}
+                                <tr>
+                                    <td scope="row" nowrap>{{ pub.pdate or "" }}</td>
+                                    <td scope="row">{{ pub.title or "" }}</td>
+                                    <td>
+                                        {% if pub.doi is not none %}{{ btn.doi(pub.doi, orcweb) }}{%
+                                        endif %}
+                                    </td>
+                                    <td>
+                                        {% if pub.pmid is not none %} {{ btn.pmid(pub.pmid, orcweb)
+                                        }} {% endif %}
+                                    </td>
+                                    <td>
+                                        {% for bibcode in pub.bibcodes or [] %} {{
+                                        btn.bibcode(bibcode, orcweb) }} {% endfor %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

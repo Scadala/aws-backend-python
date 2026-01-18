@@ -1,6 +1,6 @@
 {% macro doi(doi, orcweb) -%}
 <div class="btn-group">
-    <a href="doi.org/{{ doi }}"
+    <a href="/doi.org/{{ doi }}"
         class="btn btn-primary {% if orcweb and orcweb.lib_dois[doi] | length > 0 %} btn-success {% endif %}">
         {{doi}}
     </a>
@@ -23,7 +23,7 @@
 </div>
 {%- endmacro %} {% macro pmid(pmid, orcweb) -%}
 <div class="btn-group">
-    <a href="pmid/{{ pmid }}"
+    <a href="/pmid/{{ pmid }}"
         class="btn btn-primary {% if orcweb and orcweb.lib_pmids[pmid|string] | length > 0 %} btn-success {% endif %}">
         {{pmid}}
     </a>
@@ -48,7 +48,7 @@
 {%- endmacro %} {% macro bibcode(bibcode, orcweb) -%}
 
 <div class="btn-group">
-    <a href="bibcode/{{ bibcode }}"
+    <a href="/bibcode/{{ bibcode }}"
         class="btn btn-primary {% if orcweb and orcweb.lib_bibcodes[bibcode] | length > 0 %} btn-success {% endif %}">
         {{ bibcode }}
     </a>

@@ -46,6 +46,19 @@ Resources:
           Properties:
             Path: /search
             Method: get
+  DoiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: jinja2/
+      Handler: doi.lambda_handler
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: HttpApi
+          Properties:
+            Path: /doi.org/{doi+}
+            Method: get
 
   AuthFunction:
     Type: AWS::Serverless::Function
