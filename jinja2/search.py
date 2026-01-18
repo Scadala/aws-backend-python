@@ -5,6 +5,7 @@ from datetime import datetime
 from urllib.parse import unquote_plus
 import urllib3
 import json
+from dataclasses import dataclass, field
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -17,6 +18,16 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 index_template = jinja_env.get_template("query.html")
 
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
+
+
+@dataclass
+class Publication:
+    title: str
+    ncits: int = 0
+    pmids: list[int] | None = field(default_factory=list)
+    dois: list[str] | None = field(default_factory=list)
+    pdate: date | None = None
+    bibcodes: list[str] = field(default_factory=list)
 
 
 def lambda_handler(event, context):
@@ -57,9 +68,12 @@ def lambda_handler(event, context):
         )
     }
     logger.info("params", extra={"params": params})
+    url = "https://api.crossref.org/works?" + params.get("query")
+    logger.info("url", extra={"url": url})
 
     response = http.request(
-        "GET", "https://api.crossref.org/works?" + params.get("query")
+        method="GET",
+        url=url,
     )
     data = json.loads(response.data.decode("utf-8"))
     logger.info("data", extra={"data": data})
@@ -71,7 +85,14 @@ def lambda_handler(event, context):
             isindex=True,
             name=session.get("name"),
             title=params.get("query"),
-            pubs=[],
+            pubs=[
+                Publication(
+                    title=item["title"][0],
+                    dois=[item["DOI"]],
+                    pdate=item.get("published-online"),
+                )
+                for item in data["message"]["items"]
+            ],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
