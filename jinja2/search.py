@@ -85,7 +85,7 @@ def lambda_handler(event, context):
             title=params.get("query"),
             pubs=[
                 Publication(
-                    title=item["title"][0],
+                    title=item.get("title", [None])[0],
                     dois=[item["DOI"]],
                     pdate=pdate_from_item(item),
                 )
