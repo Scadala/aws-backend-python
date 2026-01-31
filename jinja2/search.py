@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime, date
+from datetime import date
 from urllib.parse import unquote_plus
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -203,6 +203,9 @@ def pubmed_query(query: str, retmax: int):
         + query,
     )
     return json.loads(pubmed_response.data.decode("utf-8"))
+
+
+# TODO: https://pubmed.ncbi.nlm.nih.gov/?term=10.1016/j.ctrv.2020.102019[aid]+OR+10.1016/j.tcb.2020.02.009[aid]
 
 
 def get_dy_pmids(pmids: list[str]):
