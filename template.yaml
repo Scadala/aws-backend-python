@@ -20,7 +20,7 @@ Globals:
       SystemLogLevel: INFO
 
 Resources:
-  UsersTable:
+  PmidTable:
     Type: AWS::DynamoDB::Table
     Properties:
       TableName: !Sub "${AWS::StackName}-pubmed"
@@ -51,6 +51,9 @@ Resources:
       Handler: search.lambda_handler
       Architectures:
         - x86_64
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref PmidTable
       Events:
         HelloWorld:
           Type: HttpApi
