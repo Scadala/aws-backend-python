@@ -78,11 +78,21 @@ def lambda_handler(event, context):
 
     pubmed_response = http.request(
         method="GET",
-        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?retmode=json&sort=relevance&term="
+        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&sort=relevance&term="
         + params.get("query"),
     )
     pubmed_data = json.loads(pubmed_response.data.decode("utf-8"))
     logger.info("pubmed_data", extra={"pubmed_data": pubmed_data})
+
+    pubmed_summary_response = http.request(
+        method="GET",
+        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id="
+        + ",".join(pubmed_data.get("esearchresult", {}).get("idlist", [])),
+    )
+    pubmed_summary_data = json.loads(pubmed_summary_response.data.decode("utf-8"))
+    logger.info(
+        "pubmed_summary_data", extra={"pubmed_summary_data": pubmed_summary_data}
+    )
 
     return {
         "statusCode": 200,

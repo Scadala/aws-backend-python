@@ -26,10 +26,10 @@ Resources:
       TableName: !Sub "${AWS::StackName}-pubmed"
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: pmid
+        - AttributeName: uid
           AttributeType: N
       KeySchema:
-        - AttributeName: pmid
+        - AttributeName: uid
           KeyType: HASH
   IndexFunction:
     Type: AWS::Serverless::Function
