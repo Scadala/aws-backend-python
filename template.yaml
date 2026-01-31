@@ -23,7 +23,7 @@ Resources:
   PmidTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub "${AWS::StackName}-pubmed"
+      # TableName: !Sub "${AWS::StackName}-pubmed"
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: uid
