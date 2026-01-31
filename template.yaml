@@ -20,6 +20,17 @@ Globals:
       SystemLogLevel: INFO
 
 Resources:
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: pubmed
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pmid
+          AttributeType: N
+      KeySchema:
+        - AttributeName: pmid
+          KeyType: RANGE
   IndexFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -76,6 +76,14 @@ def lambda_handler(event, context):
     data = json.loads(response.data.decode("utf-8"))
     logger.info("data", extra={"data": data})
 
+    pubmed_response = http.request(
+        method="GET",
+        url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?retmode=json&sort=relevance&term="
+        + params.get("query"),
+    )
+    pubmed_data = json.loads(pubmed_response.data.decode("utf-8"))
+    logger.info("pubmed_data", extra={"pubmed_data": pubmed_data})
+
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
