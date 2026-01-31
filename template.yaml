@@ -23,7 +23,6 @@ Resources:
   PmidTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      # TableName: !Sub "${AWS::StackName}-pubmed"
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: uid
@@ -54,6 +53,9 @@ Resources:
       Environment:
         Variables:
           PMID_TABLE_NAME: !Ref PmidTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PmidTable
       Events:
         HelloWorld:
           Type: HttpApi

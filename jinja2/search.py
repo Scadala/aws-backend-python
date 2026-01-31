@@ -1,14 +1,20 @@
 import os
 import logging
-from jinja2 import Environment, FileSystemLoader
 from datetime import datetime, date
 from urllib.parse import unquote_plus
-import urllib3
 import json
 from dataclasses import dataclass, field
 
+import boto3
+import urllib3
+from jinja2 import Environment, FileSystemLoader
+
 # Set up logging
 logger = logging.getLogger(__name__)
+
+dynamodb = boto3.resource("dynamodb")
+pmid_table = dynamodb.Table(os.environ["PMID_TABLE_NAME"])
+
 
 # Set up Jinja2 environment to load templates from the templates directory
 template_dir = os.path.join(os.path.dirname(__file__), "templates")
@@ -93,6 +99,13 @@ def lambda_handler(event, context):
     logger.info(
         "pubmed_summary_data", extra={"pubmed_summary_data": pubmed_summary_data}
     )
+
+    with pmid_table.batch_writer() as batch:
+        for uid, item in pubmed_summary_data.get("result", {}).items():
+            if uid == "uids":
+                continue
+            logger.info("item", extra={"item": item})
+            batch.put_item(Item=item)
 
     return {
         "statusCode": 200,
