@@ -24,10 +24,12 @@ jobs:
           role-to-assume: arn:aws:iam::796401245269:role/github
       - run: >
           sam build
+          --parallel
           --parameter-overrides
           PythonRuntime="python$(cat .python-version)"
       - run: >
           sam deploy
+          --stack-name ${{ github.event.repository.name }}-${{ github.event_name == 'push' && github.ref_name || 'pr' }}
           --no-confirm-changeset
           --no-fail-on-empty-changeset
           --resolve-s3
