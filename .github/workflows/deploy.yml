@@ -11,6 +11,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
+    env:
+      SAM_CLI_TELEMETRY: 0
     steps:
       - uses: actions/checkout@v6.0.1
       - uses: actions/setup-python@v6.1.0
