@@ -30,7 +30,7 @@ Resources:
           AttributeType: N
       KeySchema:
         - AttributeName: pmid
-          KeyType: RANGE
+          KeyType: HASH
   IndexFunction:
     Type: AWS::Serverless::Function
     Properties:
