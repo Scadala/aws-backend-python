@@ -53,7 +53,7 @@ Resources:
         - x86_64
       Environment:
         Variables:
-          TABLE_NAME: !Ref PmidTable
+          PMID_TABLE_NAME: !Ref PmidTable
       Events:
         HelloWorld:
           Type: HttpApi
