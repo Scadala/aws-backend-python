@@ -4,6 +4,7 @@ from datetime import date
 from urllib.parse import unquote_plus
 from dataclasses import dataclass, field
 from functools import lru_cache
+from collections import defaultdict
 
 import boto3
 import urllib3
@@ -76,10 +77,20 @@ def lambda_handler(event, context):
     }
     logger.info("params", extra={"params": params})
 
-    data = crossref_query(query=params.get("query"), rows=20)
+    if "query" not in params:
+        return {"statusCode": 302, "headers": {"Location": "/"}}
+    query = params["query"]
+
+    data = crossref_query(query=query, rows=25)
     logger.info("data", extra={"data": data})
 
-    pubmed_data = pubmed_query(query=params.get("query"), retmax=20)
+    dois = {item["DOI"] for item in data["message"]["items"]}
+    q_pubmed = query
+    if len(dois) > 0:
+        q_pubmed += "+OR+"
+        q_pubmed += "+OR+".join([f"{d}[aid]" for d in dois])
+
+    pubmed_data = pubmed_query(query=q_pubmed, retmax=25)
     logger.info("pubmed_data", extra={"pubmed_data": pubmed_data})
 
     pmids = pubmed_data.get("esearchresult", {}).get("idlist", [])
@@ -112,46 +123,12 @@ def lambda_handler(event, context):
                 batch.put_item(Item=item)
         dy_pmids += get_dy_pmids(pmids=pmids_not_in)
         logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
-    for item in dy_pmids:
-        if "articleids" in item:
-            for aid in item["articleids"]:
-                if aid["idtype"] == "doi":
-                    aid["value"]
-    pmid_dois = {
-        aid["value"]
-        for item in dy_pmids
-        for aid in item["articleids"]
-        if aid["idtype"] == "doi"
-    }
-    logger.info("pmid_dois", extra={"pmid_dois": list(pmid_dois)})
 
-    crossref_dois = {item["DOI"] for item in data["message"]["items"]}
-    logger.info("crossref_dois", extra={"crossref_dois": list(crossref_dois)})
-
-    logger.info(
-        "dois intersection for " + params.get("query"),
-        extra={"dois intersection": list(pmid_dois.intersection(crossref_dois))},
-    )
-
-    logger.info(
-        "pmid dois ints",
-        extra={
-            "pmid dois ints": list(
-                {int(d.split("/")[0].split(".")[-1]) for d in pmid_dois}
-            )
-        },
-    )
-    logger.info(
-        "crossref dois ints",
-        extra={
-            "pmid dois ints": list(
-                {
-                    int(item["DOI"].split("/")[0].split(".")[-1])
-                    for item in data["message"]["items"]
-                }
-            )
-        },
-    )
+    doi2pmids = defaultdict(set)
+    for dy_pmid in dy_pmids:
+        for aid in dy_pmid.get("articleids", []):
+            if aid.get("idtype") == "doi":
+                doi2pmids[aid["value"]].add(dy_pmid["uid"])
 
     return {
         "statusCode": 200,
@@ -165,6 +142,7 @@ def lambda_handler(event, context):
                     title=item.get("title", [None])[0],
                     dois=[item["DOI"]],
                     pdate=pdate_from_item(item),
+                    pmids=list(doi2pmids[item["DOI"]]),
                 )
                 for item in data["message"]["items"]
             ],
@@ -197,15 +175,17 @@ def crossref_query(query: str, rows: int):
 
 @lru_cache(maxsize=128)
 def pubmed_query(query: str, retmax: int):
+    url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={retmax}&sort=relevance&term={query}"
+    logger.info("pubmed_url length: %s, %s", len(url), url)
     pubmed_response = http.request(
         method="GET",
-        url=f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={retmax}&sort=relevance&term="
-        + query,
+        url=url,
     )
-    return json.loads(pubmed_response.data.decode("utf-8"))
-
-
-# TODO: https://pubmed.ncbi.nlm.nih.gov/?term=10.1016/j.ctrv.2020.102019[aid]+OR+10.1016/j.tcb.2020.02.009[aid]
+    try:
+        return json.loads(pubmed_response.data.decode("utf-8"))
+    except json.JSONDecodeError:
+        logger.error("failed to decode json: %s", pubmed_response.data)
+        return {}
 
 
 def get_dy_pmids(pmids: list[str]):
