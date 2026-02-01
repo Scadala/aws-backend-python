@@ -1,14 +1,22 @@
 import os
 import logging
-from jinja2 import Environment, FileSystemLoader
-from datetime import datetime, date
+from datetime import date
 from urllib.parse import unquote_plus
-import urllib3
-import json
 from dataclasses import dataclass, field
+from functools import lru_cache
+from collections import defaultdict
+
+import boto3
+import urllib3
+from jinja2 import Environment, FileSystemLoader
+import simplejson as json
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+dynamodb = boto3.resource("dynamodb")
+pmid_table = dynamodb.Table(os.environ["PMID_TABLE_NAME"])
+
 
 # Set up Jinja2 environment to load templates from the templates directory
 template_dir = os.path.join(os.path.dirname(__file__), "templates")
@@ -69,12 +77,57 @@ def lambda_handler(event, context):
     }
     logger.info("params", extra={"params": params})
 
-    response = http.request(
-        method="GET",
-        url="https://api.crossref.org/works?query=" + params.get("query"),
-    )
-    data = json.loads(response.data.decode("utf-8"))
+    if "query" not in params:
+        return {"statusCode": 302, "headers": {"Location": "/"}}
+    query = params["query"]
+
+    data = crossref_query(query=query, rows=25)
     logger.info("data", extra={"data": data})
+
+    dois = {item["DOI"] for item in data["message"]["items"]}
+    q_pubmed = query
+    if len(dois) > 0:
+        q_pubmed += "+OR+"
+        q_pubmed += "+OR+".join([f"{d}[aid]" for d in dois])
+
+    pubmed_data = pubmed_query(query=q_pubmed, retmax=25)
+    logger.info("pubmed_data", extra={"pubmed_data": pubmed_data})
+
+    pmids = pubmed_data.get("esearchresult", {}).get("idlist", [])
+    logger.info("pmids", extra={"pmids": pmids})
+
+    dy_pmids = get_dy_pmids(pmids=pmids)
+    logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
+
+    pmids_not_in = set(pmids) - dy_pmids.keys()
+    logger.info("pmids_not_in", extra={"pmids_not_in": list(pmids_not_in)})
+
+    if len(pmids_not_in) == 0:
+        logger.info("all pmids are in dynamodb")
+    else:
+        pubmed_summary_response = http.request(
+            method="GET",
+            url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id="
+            + ",".join(pmids_not_in),
+        )
+        pubmed_summary_data = json.loads(pubmed_summary_response.data.decode("utf-8"))
+        logger.info(
+            "pubmed_summary_data", extra={"pubmed_summary_data": pubmed_summary_data}
+        )
+
+        with pmid_table.batch_writer() as batch:
+            for uid, item in pubmed_summary_data.get("result", {}).items():
+                if uid == "uids":
+                    continue
+                batch.put_item(Item=item)
+        dy_pmids |= get_dy_pmids(pmids=pmids_not_in)
+        logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
+
+    doi2pmids = defaultdict(set)
+    for dy_pmid in dy_pmids.values():
+        for aid in dy_pmid.get("articleids", []):
+            if aid.get("idtype") == "doi":
+                doi2pmids[aid["value"]].add(dy_pmid["uid"])
 
     return {
         "statusCode": 200,
@@ -88,8 +141,22 @@ def lambda_handler(event, context):
                     title=item.get("title", [None])[0],
                     dois=[item["DOI"]],
                     pdate=pdate_from_item(item),
+                    pmids=list(doi2pmids[item["DOI"]]),
                 )
                 for item in data["message"]["items"]
+            ]
+            + [
+                Publication(
+                    title=dy_pmids[pmid]["title"],
+                    dois=[
+                        aid["value"]
+                        for aid in dy_pmids[pmid]["articleids"]
+                        if aid.get("idtype") == "doi"
+                    ],
+                    pdate=dy_pmids[pmid]["pubdate"],
+                    pmids=[dy_pmids[pmid]["uid"]],
+                )
+                for pmid in pmids
             ],
         ),
         "headers": {"Content-Type": "text/html"},
@@ -107,3 +174,37 @@ def pdate_from_item(item):
     ]:
         if pdatetag in item and None not in item[pdatetag]["date-parts"][0][:3]:
             return date(*(item[pdatetag]["date-parts"][0] + [1, 1])[:3])
+
+
+@lru_cache(maxsize=128)
+def crossref_query(query: str, rows: int):
+    response = http.request(
+        method="GET",
+        url=f"https://api.crossref.org/works?rows={rows}&query=" + query,
+    )
+    return json.loads(response.data.decode("utf-8"))
+
+
+@lru_cache(maxsize=128)
+def pubmed_query(query: str, retmax: int):
+    url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={retmax}&sort=relevance&term={query}"
+    logger.info("pubmed_url length: %s, %s", len(url), url)
+    pubmed_response = http.request(
+        method="GET",
+        url=url,
+    )
+    try:
+        return json.loads(pubmed_response.data.decode("utf-8"))
+    except json.JSONDecodeError:
+        logger.error("failed to decode json: %s", pubmed_response.data)
+        return {}
+
+
+def get_dy_pmids(pmids: list[str]):
+    dyndb_response = dynamodb.batch_get_item(
+        RequestItems={
+            os.environ["PMID_TABLE_NAME"]: {"Keys": [{"uid": pmid} for pmid in pmids]}
+        }
+    )
+    dy_list = dyndb_response.get("Responses", {}).get(os.environ["PMID_TABLE_NAME"], [])
+    return {d["uid"]: d for d in json.loads(json.dumps(dy_list, use_decimal=True))}

@@ -20,6 +20,16 @@ Globals:
       SystemLogLevel: INFO
 
 Resources:
+  PmidTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: uid
+          AttributeType: S
+      KeySchema:
+        - AttributeName: uid
+          KeyType: HASH
   IndexFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -40,6 +50,14 @@ Resources:
       Handler: search.lambda_handler
       Architectures:
         - x86_64
+      Timeout: 900 # seconds (max 900)
+      MemorySize: 1769 # MB (128–10240)
+      Environment:
+        Variables:
+          PMID_TABLE_NAME: !Ref PmidTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PmidTable
       Events:
         HelloWorld:
           Type: HttpApi

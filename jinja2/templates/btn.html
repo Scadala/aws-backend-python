@@ -23,7 +23,7 @@
 </div>
 {%- endmacro %} {% macro pmid(pmid, orcweb) -%}
 <div class="btn-group">
-    <a href="/pmid/{{ pmid }}"
+    <a href="/pubmed.ncbi.nlm.nih.gov/{{ pmid }}"
         class="btn btn-primary {% if orcweb and orcweb.lib_pmids[pmid|string] | length > 0 %} btn-success {% endif %}">
         {{pmid}}
     </a>
