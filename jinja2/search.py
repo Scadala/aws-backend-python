@@ -99,8 +99,7 @@ def lambda_handler(event, context):
     dy_pmids = get_dy_pmids(pmids=pmids)
     logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
 
-    pmids_in = {r["uid"] for r in dy_pmids}
-    pmids_not_in = set(pmids) - pmids_in
+    pmids_not_in = set(pmids) - dy_pmids.keys()
     logger.info("pmids_not_in", extra={"pmids_not_in": list(pmids_not_in)})
 
     if len(pmids_not_in) == 0:
@@ -121,11 +120,11 @@ def lambda_handler(event, context):
                 if uid == "uids":
                     continue
                 batch.put_item(Item=item)
-        dy_pmids += get_dy_pmids(pmids=pmids_not_in)
+        dy_pmids |= get_dy_pmids(pmids=pmids_not_in)
         logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
 
     doi2pmids = defaultdict(set)
-    for dy_pmid in dy_pmids:
+    for dy_pmid in dy_pmids.values():
         for aid in dy_pmid.get("articleids", []):
             if aid.get("idtype") == "doi":
                 doi2pmids[aid["value"]].add(dy_pmid["uid"])
@@ -145,6 +144,19 @@ def lambda_handler(event, context):
                     pmids=list(doi2pmids[item["DOI"]]),
                 )
                 for item in data["message"]["items"]
+            ]
+            + [
+                Publication(
+                    title=dy_pmids[pmid]["title"],
+                    dois=[
+                        aid["value"]
+                        for aid in dy_pmids[pmid]["articleids"]
+                        if aid.get("idtype") == "doi"
+                    ],
+                    pdate=dy_pmids[pmid]["pubdate"],
+                    pmids=[dy_pmids[pmid]["uid"]],
+                )
+                for pmid in pmids
             ],
         ),
         "headers": {"Content-Type": "text/html"},
@@ -195,4 +207,4 @@ def get_dy_pmids(pmids: list[str]):
         }
     )
     dy_list = dyndb_response.get("Responses", {}).get(os.environ["PMID_TABLE_NAME"], [])
-    return json.loads(json.dumps(dy_list, use_decimal=True))
+    return {d["uid"]: d for d in json.loads(json.dumps(dy_list, use_decimal=True))}
