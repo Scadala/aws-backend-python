@@ -34,6 +34,5 @@ jobs:
           --stack-name ${{ github.event.repository.name }}-${{ github.event_name == 'push' && github.ref_name || 'pr' }}
           --no-confirm-changeset
           --no-fail-on-empty-changeset
-          --resolve-s3
           --parameter-overrides
           PythonRuntime="python$(cat .python-version)"
