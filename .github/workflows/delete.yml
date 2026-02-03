@@ -8,7 +8,6 @@ jobs:
   deploy:
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
       id-token: write
     env:
       SAM_CLI_TELEMETRY: 0
