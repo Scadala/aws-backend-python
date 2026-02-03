@@ -1,0 +1,23 @@
+---
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      SAM_CLI_TELEMETRY: 0
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v5.1.1
+        with:
+          aws-region: eu-central-1
+          role-to-assume: arn:aws:iam::796401245269:role/github
+      - run: >
+          sam delete
+          --stack-name ${{ github.event.repository.name }}-pr-${{ github.event.number }}
+          --no-prompts

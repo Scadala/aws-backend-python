@@ -31,10 +31,10 @@ jobs:
           PythonRuntime="python$(cat .python-version)"
       - run: >
           sam deploy
-          --stack-name ${{ github.event.repository.name }}-${{ github.event_name == 'push' && github.ref_name || 'pr' }}
+          --stack-name ${{ github.event.repository.name }}-${{ github.event_name == 'push' && github.ref_name || format('pr-{0}', github.event.number) }}
           --no-confirm-changeset
           --no-fail-on-empty-changeset
           --s3-bucket samclisourcebucket-d9da8a7d-03a2-496d-98b1-fff5081ccea1
-          --s3-prefix ${{ github.event.repository.name }}-${{ github.event_name == 'push' && github.ref_name || 'pr' }}
+          --s3-prefix ${{ github.event.repository.name }}-${{ github.event_name == 'push' && github.ref_name || format('pr-{0}', github.event.number) }}
           --parameter-overrides
           PythonRuntime="python$(cat .python-version)"
