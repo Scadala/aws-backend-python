@@ -28,24 +28,22 @@ def lambda_handler(event, context):
     }
     logger.info("session", extra={"session": session})
 
-    data = get_dy_pmids(pmids={event["pathParameters"]["pmid"]})
+    data = get_dy_pmids(pmids={event["pathParameters"]["pmid"]})[
+        event["pathParameters"]["pmid"]
+    ]
 
     logger.info("data", extra={"data": data})
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
         "body": index_template.render(
-            isindex=True,
+            isindex=False,
             name=session.get("name"),
-            title=data[event["pathParameters"]["pmid"]].get("title", [None])[0],
+            title=data.get("title", ""),
             rawPath=event["rawPath"],
             orcweb=None,
-            pub=make_pub(data[event["pathParameters"]["pmid"]]),
-            refs=[
-                make_ref(r)
-                for r in data[event["pathParameters"]["pmid"]].get("reference", [])
-                if "DOI" in r
-            ],
+            pub=make_pub(data),
+            refs=[make_ref(r) for r in data.get("reference", []) if "DOI" in r],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
@@ -55,7 +53,7 @@ def lambda_handler(event, context):
 def make_pub(data):
     _pdate = pdate_from_item(data)
     return Pub(
-        pdate=_pdate.isoformat() if _pdate is not None else "",
+        pdate=data.get("sortpubdate", ""),
         abstract=data.get("abstract"),
         title=data.get("title", [None])[0],
         orcs=[make_orc(o) for o in data.get("author", []) if "ORCID" in o],

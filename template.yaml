@@ -20,18 +20,18 @@ Globals:
       SystemLogLevel: INFO
     Environment:
       Variables:
-        PMID_TABLE_NAME: !Ref PmidTable
+        PMID_TABLE_NAME: !Ref PmidTablev2
 
 Resources:
-  PmidTable:
+  PmidTablev2:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
-        - AttributeName: uid
-          AttributeType: S
+        - AttributeName: pmid
+          AttributeType: N
       KeySchema:
-        - AttributeName: uid
+        - AttributeName: pmid
           KeyType: HASH
   IndexFunction:
     Type: AWS::Serverless::Function
@@ -57,7 +57,7 @@ Resources:
       MemorySize: 1769 # MB (128–10240)
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref PmidTable
+            TableName: !Ref PmidTablev2
       Events:
         HelloWorld:
           Type: HttpApi
@@ -92,7 +92,7 @@ Resources:
             Method: get
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref PmidTable
+            TableName: !Ref PmidTablev2
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
