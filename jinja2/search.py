@@ -95,9 +95,8 @@ def lambda_handler(event, context):
 
     doi2pmids = defaultdict(set)
     for dy_pmid in dy_pmids.values():
-        for aid in dy_pmid.get("articleids", []):
-            if aid.get("idtype") == "doi":
-                doi2pmids[aid["value"]].add(dy_pmid["uid"])
+        if dy_pmid.doi:
+            doi2pmids[dy_pmid.doi].add(dy_pmid.pmid)
 
     return {
         "statusCode": 200,
@@ -117,14 +116,10 @@ def lambda_handler(event, context):
             ]
             + [
                 Publication(
-                    title=dy_pmids[pmid]["title"],
-                    dois=[
-                        aid["value"]
-                        for aid in dy_pmids[pmid]["articleids"]
-                        if aid.get("idtype") == "doi"
-                    ],
-                    pdate=dy_pmids[pmid]["pubdate"],
-                    pmids=[dy_pmids[pmid]["uid"]],
+                    title=dy_pmids[pmid].title,
+                    dois=[dy_pmids[pmid].doi] if dy_pmids[pmid].doi else [],
+                    pdate=dy_pmids[pmid].sortpubdate,
+                    pmids=[dy_pmids[pmid].pmid],
                 )
                 for pmid in pmids
             ],
