@@ -77,6 +77,19 @@ Resources:
           Properties:
             Path: /doi.org/{doi+}
             Method: get
+  PmidFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: jinja2/
+      Handler: pmid.lambda_handler
+      Architectures:
+        - x86_64
+      Events:
+        HelloWorld:
+          Type: HttpApi
+          Properties:
+            Path: /pmid/{pmid}
+            Method: get
 
   AuthFunction:
     Type: AWS::Serverless::Function
