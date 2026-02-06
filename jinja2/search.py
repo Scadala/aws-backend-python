@@ -7,9 +7,10 @@ from functools import lru_cache
 from collections import defaultdict
 
 import boto3
-import urllib3
 from jinja2 import Environment, FileSystemLoader
 import simplejson as json
+
+from .utils import http
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -24,8 +25,6 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
 index_template = jinja_env.get_template("query.html")
-
-http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
 
 @dataclass
