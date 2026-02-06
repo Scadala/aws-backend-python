@@ -88,7 +88,7 @@ Resources:
         HelloWorld:
           Type: HttpApi
           Properties:
-            Path: /pmid/{pmid}
+            Path: /pubmed.ncbi.nlm.nih.gov/{pmid}
             Method: get
 
   AuthFunction:

@@ -3,10 +3,9 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from datetime import date
 from urllib.parse import unquote_plus
-import json
 from dataclasses import dataclass
 
-from .utils import get_dy_pmids, http
+from utils import get_dy_pmids
 
 # Set up logging
 logger = logging.getLogger(__name__)

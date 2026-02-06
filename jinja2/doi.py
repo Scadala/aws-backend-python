@@ -6,7 +6,7 @@ from urllib.parse import unquote_plus
 import json
 from dataclasses import dataclass
 
-from .utils import http
+from utils import http
 
 # Set up logging
 logger = logging.getLogger(__name__)
