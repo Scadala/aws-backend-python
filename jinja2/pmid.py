@@ -5,7 +5,7 @@ from datetime import date
 from urllib.parse import unquote_plus
 from dataclasses import dataclass, asdict
 
-from utils import get_dy_pmids, PubSlim
+from utils import get_dy_pmids, PubSlim, Pmid
 
 
 # Set up logging
@@ -51,9 +51,9 @@ def lambda_handler(event, context):
     }
 
 
-def make_pub(data):
+def make_pub(data: Pmid):
     return Pub(
-        pdate=data.pdate if data.pdate else "",
+        pdate=data.sortpubdate,
         abstract=data.abstract,
         title=data.title,
         orcs=[],
@@ -88,11 +88,11 @@ class Orc:
 
 @dataclass
 class Pub:
-    pdate: str
+    pdate: str | None
     abstract: str | None
     title: str | None
     orcs: list[Orc]
-    doi: str
+    doi: str | None
 
 
 @dataclass
