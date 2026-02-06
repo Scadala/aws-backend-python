@@ -3,9 +3,10 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from datetime import date
 from urllib.parse import unquote_plus
-import urllib3
 import json
 from dataclasses import dataclass
+
+from .utils import http
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -16,8 +17,6 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
 index_template = jinja_env.get_template("publication.html")
-
-http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
 
 def lambda_handler(event, context):
