@@ -3,7 +3,7 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from datetime import date
 from urllib.parse import unquote_plus
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 from utils import get_dy_pmids, PubSlim
 
@@ -29,11 +29,11 @@ def lambda_handler(event, context):
     }
     logger.info("session", extra={"session": session})
 
-    pmid = int(event["pathParameters"]["pmid"])
+    pmid = event["pathParameters"]["pmid"]
 
-    data = get_dy_pmids(pmids={pmid})[pmid]
+    data = get_dy_pmids(pmids=[pmid])[pmid]
 
-    logger.info("data", extra={"data": data})
+    logger.info("data", extra={"data": asdict(data)})
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
@@ -52,13 +52,12 @@ def lambda_handler(event, context):
 
 
 def make_pub(data):
-    _pdate = pdate_from_item(data)
     return Pub(
-        pdate=data.get("sortpubdate", ""),
-        abstract=data.get("abstract"),
-        title=data.get("title", [None])[0],
-        orcs=[make_orc(o) for o in data.get("author", []) if "ORCID" in o],
-        doi=data.get("DOI"),
+        pdate=data.pdate if data.pdate else "",
+        abstract=data.abstract,
+        title=data.title,
+        orcs=[],
+        doi=data.doi,
     )
 
 
