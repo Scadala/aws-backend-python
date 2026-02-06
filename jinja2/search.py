@@ -9,7 +9,7 @@ from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 import simplejson as json
 
-from .utils import get_dy_pmids, http
+from utils import get_dy_pmids, http
 
 # Set up logging
 logger = logging.getLogger(__name__)
