@@ -90,7 +90,9 @@ Resources:
           Properties:
             Path: /pubmed.ncbi.nlm.nih.gov/{pmid}
             Method: get
-
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PmidTable
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
