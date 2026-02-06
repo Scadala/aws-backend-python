@@ -6,16 +6,13 @@ from dataclasses import dataclass, field
 from functools import lru_cache
 from collections import defaultdict
 
-import boto3
-import urllib3
 from jinja2 import Environment, FileSystemLoader
 import simplejson as json
 
+from utils import get_dy_pmids, http
+
 # Set up logging
 logger = logging.getLogger(__name__)
-
-dynamodb = boto3.resource("dynamodb")
-pmid_table = dynamodb.Table(os.environ["PMID_TABLE_NAME"])
 
 
 # Set up Jinja2 environment to load templates from the templates directory
@@ -24,8 +21,6 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
 index_template = jinja_env.get_template("query.html")
-
-http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
 
 @dataclass
@@ -97,37 +92,11 @@ def lambda_handler(event, context):
     logger.info("pmids", extra={"pmids": pmids})
 
     dy_pmids = get_dy_pmids(pmids=pmids)
-    logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
-
-    pmids_not_in = set(pmids) - dy_pmids.keys()
-    logger.info("pmids_not_in", extra={"pmids_not_in": list(pmids_not_in)})
-
-    if len(pmids_not_in) == 0:
-        logger.info("all pmids are in dynamodb")
-    else:
-        pubmed_summary_response = http.request(
-            method="GET",
-            url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id="
-            + ",".join(pmids_not_in),
-        )
-        pubmed_summary_data = json.loads(pubmed_summary_response.data.decode("utf-8"))
-        logger.info(
-            "pubmed_summary_data", extra={"pubmed_summary_data": pubmed_summary_data}
-        )
-
-        with pmid_table.batch_writer() as batch:
-            for uid, item in pubmed_summary_data.get("result", {}).items():
-                if uid == "uids":
-                    continue
-                batch.put_item(Item=item)
-        dy_pmids |= get_dy_pmids(pmids=pmids_not_in)
-        logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
 
     doi2pmids = defaultdict(set)
     for dy_pmid in dy_pmids.values():
-        for aid in dy_pmid.get("articleids", []):
-            if aid.get("idtype") == "doi":
-                doi2pmids[aid["value"]].add(dy_pmid["uid"])
+        if dy_pmid.doi:
+            doi2pmids[dy_pmid.doi].add(dy_pmid.pmid)
 
     return {
         "statusCode": 200,
@@ -147,14 +116,10 @@ def lambda_handler(event, context):
             ]
             + [
                 Publication(
-                    title=dy_pmids[pmid]["title"],
-                    dois=[
-                        aid["value"]
-                        for aid in dy_pmids[pmid]["articleids"]
-                        if aid.get("idtype") == "doi"
-                    ],
-                    pdate=dy_pmids[pmid]["pubdate"],
-                    pmids=[dy_pmids[pmid]["uid"]],
+                    title=dy_pmids[pmid].title,
+                    dois=[dy_pmids[pmid].doi] if dy_pmids[pmid].doi else [],
+                    pdate=dy_pmids[pmid].sortpubdate,
+                    pmids=[dy_pmids[pmid].pmid],
                 )
                 for pmid in pmids
             ],
@@ -198,13 +163,3 @@ def pubmed_query(query: str, retmax: int):
     except json.JSONDecodeError:
         logger.error("failed to decode json: %s", pubmed_response.data)
         return {}
-
-
-def get_dy_pmids(pmids: list[str]):
-    dyndb_response = dynamodb.batch_get_item(
-        RequestItems={
-            os.environ["PMID_TABLE_NAME"]: {"Keys": [{"uid": pmid} for pmid in pmids]}
-        }
-    )
-    dy_list = dyndb_response.get("Responses", {}).get(os.environ["PMID_TABLE_NAME"], [])
-    return {d["uid"]: d for d in json.loads(json.dumps(dy_list, use_decimal=True))}

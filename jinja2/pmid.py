@@ -3,10 +3,10 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from datetime import date
 from urllib.parse import unquote_plus
-import json
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
-from utils import http
+from utils import get_dy_pmids, PubSlim, Pmid
+
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -29,39 +29,38 @@ def lambda_handler(event, context):
     }
     logger.info("session", extra={"session": session})
 
-    response = http.request(
-        method="GET",
-        url="https://api.crossref.org/works/" + event["pathParameters"]["doi"],
-    )
-    data = json.loads(response.data.decode("utf-8"))
-    logger.info("data", extra={"data": data})
+    pmid = event["pathParameters"]["pmid"]
+
+    data = get_dy_pmids(pmids=[pmid])[pmid]
+
+    logger.info("data", extra={"data": asdict(data)})
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
         "body": index_template.render(
-            isindex=True,
+            isindex=False,
             name=session.get("name"),
-            title=data["message"].get("title", [None])[0],
+            title=data.title if data.title else "",
             rawPath=event["rawPath"],
             orcweb=None,
-            pub=make_pub(data["message"]),
-            refs=[
-                make_ref(r) for r in data["message"].get("reference", []) if "DOI" in r
-            ],
+            pub=make_pub(data),
+            refs=[PubSlim(pmid=ref) for ref in data.refs],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
     }
 
 
-def make_pub(data):
-    _pdate = pdate_from_item(data)
+def make_pub(data: Pmid):
     return Pub(
-        pdate=_pdate.isoformat() if _pdate is not None else "",
-        abstract=data.get("abstract"),
-        title=data.get("title", [None])[0],
-        orcs=[make_orc(o) for o in data.get("author", []) if "ORCID" in o],
-        doi=data.get("DOI"),
+        pdate=data.sortpubdate,
+        abstract=data.abstract,
+        title=data.title,
+        orcs=[],
+        doi=data.doi,
+        same_dois=[data.doi] if data.doi is not None else [],
+        pmcid=data.pmc,
+        pmid=data.pmid,
     )
 
 
@@ -92,11 +91,14 @@ class Orc:
 
 @dataclass
 class Pub:
-    pdate: str
+    pdate: str | None
     abstract: str | None
     title: str | None
     orcs: list[Orc]
-    doi: str
+    doi: str | None
+    same_dois: list[str]
+    pmcid: str | None
+    pmid: str | None
 
 
 @dataclass
