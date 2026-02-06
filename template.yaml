@@ -18,6 +18,9 @@ Globals:
       LogFormat: JSON
       ApplicationLogLevel: INFO
       SystemLogLevel: INFO
+    Environment:
+      Variables:
+        PMID_TABLE_NAME: !Ref PmidTable
 
 Resources:
   PmidTable:
@@ -52,9 +55,6 @@ Resources:
         - x86_64
       Timeout: 900 # seconds (max 900)
       MemorySize: 1769 # MB (128–10240)
-      Environment:
-        Variables:
-          PMID_TABLE_NAME: !Ref PmidTable
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTable
