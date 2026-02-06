@@ -4,7 +4,7 @@ import os
 
 import boto3
 import urllib3
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 
 
 from xml.etree import ElementTree
@@ -18,19 +18,28 @@ http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
 @dataclass
 class Pmid:
-    pmid: int
+    pmid: str
     title: str | None
     abstract: str | None
     sortpubdate: str | None
     doi: str | None
+    pmc: str | None
+    refs: list[str]
 
 
-def get_dy_pmids(pmids: set[int]) -> dict[int, Pmid]:
+@dataclass
+class PubSlim:
+    pmid: str | None = None
+    title: str | None = None
+    pdate: str | None = None
+    doi: str | None = None
+    bibcodes: list[str] | None = None
+
+
+def get_dy_pmids(pmids: list[str]) -> dict[str, Pmid]:
     dyndb_response = dynamodb.batch_get_item(
         RequestItems={
-            os.environ["PMID_TABLE_NAME"]: {
-                "Keys": [{"pmid": int(pmid)} for pmid in pmids]
-            }
+            os.environ["PMID_TABLE_NAME"]: {"Keys": [{"pmid": pmid} for pmid in pmids]}
         }
     )
     dy_list = dyndb_response.get("Responses", {}).get(os.environ["PMID_TABLE_NAME"], [])
@@ -41,7 +50,7 @@ def get_dy_pmids(pmids: set[int]) -> dict[int, Pmid]:
     }
     logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
 
-    pmids_not_in = pmids - dy_pmids.keys()
+    pmids_not_in = set(pmids) - dy_pmids.keys()
     logger.info("pmids_not_in", extra={"pmids_not_in": list(pmids_not_in)})
 
     if len(pmids_not_in) > 0:
@@ -55,7 +64,7 @@ def get_dy_pmids(pmids: set[int]) -> dict[int, Pmid]:
             pmid_element = pubmed_article.find(".//MedlineCitation/PMID")
             assert pmid_element is not None
             assert pmid_element.text is not None
-            pmid = int(pmid_element.text)
+            pmid = pmid_element.text
 
             title_element = pubmed_article.find(
                 ".//MedlineCitation/Article/ArticleTitle"
@@ -95,12 +104,34 @@ def get_dy_pmids(pmids: set[int]) -> dict[int, Pmid]:
             )
             doi = doi_element.text if doi_element is not None else None
 
+            pmc_element = pubmed_article.find(
+                ".//PubmedData/ArticleIdList/ArticleId[@IdType='pmc']"
+            )
+            pmc = pmc_element.text if pmc_element is not None else None
+
+            refs_elements = pubmed_article.findall(
+                ".//PubmedData/ReferenceList/Reference/ArticleIdList/ArticleId[@IdType='pubmed']"
+            )
+
             dy_pmids[pmid] = Pmid(
                 pmid=pmid,
                 title=title,
                 abstract=abstract,
                 sortpubdate=sortpubdate,
                 doi=doi,
+                pmc=pmc,
+                refs=[
+                    ref_element.text
+                    for ref_element in refs_elements
+                    if ref_element.text is not None
+                ],
             )
-        logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
+        logger.info(
+            "dy_pmids",
+            extra={
+                "dy_pmids": {
+                    pmid: asdict(pmid_data) for pmid, pmid_data in dy_pmids.items()
+                }
+            },
+        )
     return dy_pmids

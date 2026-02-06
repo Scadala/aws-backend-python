@@ -5,7 +5,8 @@ from datetime import date
 from urllib.parse import unquote_plus
 from dataclasses import dataclass
 
-from utils import get_dy_pmids
+from utils import get_dy_pmids, PubSlim
+
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -28,9 +29,9 @@ def lambda_handler(event, context):
     }
     logger.info("session", extra={"session": session})
 
-    data = get_dy_pmids(pmids={event["pathParameters"]["pmid"]})[
-        event["pathParameters"]["pmid"]
-    ]
+    pmid = int(event["pathParameters"]["pmid"])
+
+    data = get_dy_pmids(pmids={pmid})[pmid]
 
     logger.info("data", extra={"data": data})
     return {
@@ -39,11 +40,11 @@ def lambda_handler(event, context):
         "body": index_template.render(
             isindex=False,
             name=session.get("name"),
-            title=data.get("title", ""),
+            title=data.title if data.title else "",
             rawPath=event["rawPath"],
             orcweb=None,
             pub=make_pub(data),
-            refs=[make_ref(r) for r in data.get("reference", []) if "DOI" in r],
+            refs=[PubSlim(pmid=ref) for ref in data.refs],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
