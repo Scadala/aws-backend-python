@@ -140,7 +140,7 @@
                 <td>
                     {% for pmid in pub.same_pmids %}
                     <div>
-                        <a href="pmid/{{ pmid }}">{{ pmid }}</a>
+                        <a href="/pmid/{{ pmid }}">{{ pmid }}</a>
                     </div>
                     {% endfor %}
                 </td>
@@ -149,7 +149,7 @@
             <tr>
                 <th scope="row">PMCID</th>
                 <td>
-                    <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{{ pub.pmcid }}/" target="_blank">{{ pub.pmcid
+                    <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/{{ pub.pmcid }}/" target="_blank">{{ pub.pmcid
                         }}↗</a>
                 </td>
             </tr>
@@ -171,7 +171,7 @@
                 <td>
                     {% for doi in pub.same_dois %}
                     <div>
-                        <a href="doi.org/{{ doi }}">{{ doi }}</a>
+                        <a href="/doi.org/{{ doi }}">{{ doi }}</a>
                     </div>
                     {% endfor %}
                 </td>

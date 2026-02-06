@@ -88,10 +88,10 @@ def lambda_handler(event, context):
     pubmed_data = pubmed_query(query=q_pubmed, retmax=25)
     logger.info("pubmed_data", extra={"pubmed_data": pubmed_data})
 
-    pmids = [int(p) for p in pubmed_data.get("esearchresult", {}).get("idlist", [])]
+    pmids = pubmed_data.get("esearchresult", {}).get("idlist", [])
     logger.info("pmids", extra={"pmids": pmids})
 
-    dy_pmids = get_dy_pmids(pmids=set(pmids))
+    dy_pmids = get_dy_pmids(pmids=pmids)
 
     doi2pmids = defaultdict(set)
     for dy_pmid in dy_pmids.values():

@@ -58,6 +58,9 @@ def make_pub(data: Pmid):
         title=data.title,
         orcs=[],
         doi=data.doi,
+        same_dois=[data.doi] if data.doi is not None else [],
+        pmcid=data.pmc,
+        pmid=data.pmid,
     )
 
 
@@ -93,6 +96,9 @@ class Pub:
     title: str | None
     orcs: list[Orc]
     doi: str | None
+    same_dois: list[str]
+    pmcid: str | None
+    pmid: str | None
 
 
 @dataclass
