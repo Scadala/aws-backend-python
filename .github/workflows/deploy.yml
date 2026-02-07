@@ -42,4 +42,9 @@ jobs:
           sam list endpoints
           --stack-name ${{ format('{0}-pr-{1}', github.event.repository.name, github.event.number) }}
           --output json
+          | jq
+      - run: >
+          sam list endpoints
+          --stack-name ${{ format('{0}-pr-{1}', github.event.repository.name, github.event.number) }}
+          --output json
           | jq -r '.[] | select(.LogicalResourceId == "ServerlessHttpApi") | .CloudEndpoint[0]'
