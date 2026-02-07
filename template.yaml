@@ -78,6 +78,14 @@ Resources:
       Handler: doi.lambda_handler
       Architectures:
         - x86_64
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PmidTablev3
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
         E1:
           Type: HttpApi
@@ -100,6 +108,11 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev3
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
   BibCodeFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -107,6 +120,14 @@ Resources:
       Handler: bibcode.lambda_handler
       Architectures:
         - x86_64
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PmidTablev3
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
         E1:
           Type: HttpApi

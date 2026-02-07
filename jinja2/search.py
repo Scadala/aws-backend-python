@@ -87,8 +87,9 @@ def lambda_handler(event, context):
 
     doi2pmids = defaultdict(set)
     for dy_pmid in dy_pmids.values():
-        if dy_pmid.doi:
-            doi2pmids[dy_pmid.doi].add(dy_pmid.pmid)
+        if dy_pmid.dois:
+            for doi in dy_pmid.dois:
+                doi2pmids[doi].add(dy_pmid.pmids[0])
 
     return {
         "statusCode": 200,
@@ -106,24 +107,8 @@ def lambda_handler(event, context):
                 )
                 for item in data["message"]["items"]
             ]
-            + [
-                Pub(
-                    title=dy_pmids[pmid].title,
-                    dois=[dy_pmids[pmid].doi] if dy_pmids[pmid].doi else [],
-                    pdate=dy_pmids[pmid].sortpubdate,
-                    pmids=[dy_pmids[pmid].pmid],
-                )
-                for pmid in pmids
-            ]
-            + [
-                Pub(
-                    title=nasa_ads.get("title", [None])[0],
-                    dois=nasa_ads.get("doi"),
-                    pdate=nasa_ads.get("pubdate"),
-                    bibcodes=[nasa_ads.get("bibcode")],
-                )
-                for nasa_ads in nasa_ads_data.get("response", {}).get("docs", [])
-            ],
+            + [dy_pmids[pmid] for pmid in pmids]
+            + nasa_ads_data,
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
