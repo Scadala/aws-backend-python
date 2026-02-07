@@ -33,6 +33,8 @@ Resources:
       KeySchema:
         - AttributeName: pmid
           KeyType: HASH
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
   IndexFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -98,6 +100,19 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev3
+  BibCodeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: jinja2/
+      Handler: bibcode.lambda_handler
+      Architectures:
+        - x86_64
+      Events:
+        E1:
+          Type: HttpApi
+          Properties:
+            Path: /ui.adsabs.harvard.edu/abs/{bibcode}
+            Method: get
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -151,6 +166,22 @@ Resources:
           Properties:
             Path: /logout
             Method: get
+  StreamProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: snodepsrc/
+      Handler: app.lambda_handler
+      Policies:
+        - DynamoDBStreamReadPolicy:
+            TableName: !Ref PmidTablev3
+      Events:
+        DynamoDBStream:
+          Type: DynamoDB
+          Properties:
+            Stream: !GetAtt PmidTablev3.StreamArn
+            StartingPosition: TRIM_HORIZON
+            BatchSize: 100
+            Enabled: true
 
 Outputs:
   ApiUrl:

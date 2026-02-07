@@ -1,11 +1,9 @@
 import os
 import logging
 from jinja2 import Environment, FileSystemLoader
-from datetime import date
 from urllib.parse import unquote_plus
-from dataclasses import dataclass, asdict
 
-from utils import get_dy_pmids, Pub, Pmid
+from utils import ads_query
 
 
 # Set up logging
@@ -29,11 +27,10 @@ def lambda_handler(event, context):
     }
     logger.info("session", extra={"session": session})
 
-    pmid = event["pathParameters"]["pmid"]
+    bibcode = event["pathParameters"]["bibcode"]
 
-    data = get_dy_pmids(pmids=[pmid])[pmid]
+    data = ads_query(query=f"bibcode:{bibcode}")[0]
 
-    logger.info("data", extra={"data": asdict(data)})
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
@@ -43,49 +40,9 @@ def lambda_handler(event, context):
             title=data.title if data.title else "",
             rawPath=event["rawPath"],
             orcweb=None,
-            pub=make_pub(data),
-            refs=[Pub(pmid=ref) for ref in data.refs],
+            pub=data,
+            refs=[],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
     }
-
-
-def make_pub(data: Pmid):
-    return Pub(
-        pdate=data.sortpubdate,
-        abstract=data.abstract,
-        title=data.title,
-        orcs=[],
-        doi=data.doi,
-        same_dois=[data.doi] if data.doi is not None else [],
-        pmcid=data.pmc,
-        pmid=data.pmid,
-    )
-
-
-def pdate_from_item(item):
-    for pdatetag in [
-        "issued",
-        "posted",
-        "accepted",
-        "published-print",
-        "published-online",
-    ]:
-        if pdatetag in item and None not in item[pdatetag]["date-parts"][0][:3]:
-            return date(*(item[pdatetag]["date-parts"][0] + [1, 1])[:3])
-
-
-@dataclass
-class DoiRef:
-    doi: str
-    pdate: str
-    title: str
-
-
-def make_ref(data):
-    return DoiRef(
-        doi=data["DOI"],
-        title=data.get("unstructured"),
-        pdate=data.get("year"),
-    )

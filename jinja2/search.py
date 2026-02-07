@@ -2,15 +2,13 @@ import os
 import logging
 from datetime import date
 from urllib.parse import unquote_plus
-from dataclasses import dataclass, field
 from functools import lru_cache
 from collections import defaultdict
 
-import boto3
 from jinja2 import Environment, FileSystemLoader
 import simplejson as json
 
-from utils import get_dy_pmids, http
+from utils import get_dy_pmids, http, Pub, ads_query
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -22,33 +20,6 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
 index_template = jinja_env.get_template("query.html")
-
-ssm_client = boto3.client("ssm", region_name="eu-central-1")
-
-nasa_ads_token = ssm_client.get_parameter(
-    Name="arn:aws:ssm:eu-central-1:796401245269:parameter"
-    + "/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com",
-    WithDecryption=True,
-)["Parameter"]["Value"]
-
-
-@dataclass
-class Publication:
-    title: str
-    ncits: int = 0
-    pmids: list[int] | None = field(default_factory=list)
-    dois: list[str] | None = field(default_factory=list)
-    pdate: date | None = None
-    bibcodes: list[str] = field(default_factory=list)
-
-
-def ads_query(query, rows):
-    response = http.request(
-        method="GET",
-        url="https://api.adsabs.harvard.edu/v1/search/query?q=" + query,
-        headers={"Authorization": f"Bearer {nasa_ads_token}"},
-    )
-    return json.loads(response.data.decode("utf-8"))
 
 
 def lambda_handler(event, context):
@@ -95,7 +66,7 @@ def lambda_handler(event, context):
     query = params["query"]
 
     nasa_ads_data = ads_query(query=query, rows=25)
-    logger.info("nasa_ads_data", extra={"nasa_ads_data": nasa_ads_data})
+    # logger.info("nasa_ads_data", extra={"nasa_ads_data": nasa_ads_data})
 
     data = crossref_query(query=query, rows=25)
     logger.info("data", extra={"data": data})
@@ -127,7 +98,7 @@ def lambda_handler(event, context):
             name=session.get("name"),
             title=params.get("query"),
             pubs=[
-                Publication(
+                Pub(
                     title=item.get("title", [None])[0],
                     dois=[item["DOI"]],
                     pdate=pdate_from_item(item),
@@ -136,13 +107,22 @@ def lambda_handler(event, context):
                 for item in data["message"]["items"]
             ]
             + [
-                Publication(
+                Pub(
                     title=dy_pmids[pmid].title,
                     dois=[dy_pmids[pmid].doi] if dy_pmids[pmid].doi else [],
                     pdate=dy_pmids[pmid].sortpubdate,
                     pmids=[dy_pmids[pmid].pmid],
                 )
                 for pmid in pmids
+            ]
+            + [
+                Pub(
+                    title=nasa_ads.get("title", [None])[0],
+                    dois=nasa_ads.get("doi"),
+                    pdate=nasa_ads.get("pubdate"),
+                    bibcodes=[nasa_ads.get("bibcode")],
+                )
+                for nasa_ads in nasa_ads_data.get("response", {}).get("docs", [])
             ],
         ),
         "headers": {"Content-Type": "text/html"},

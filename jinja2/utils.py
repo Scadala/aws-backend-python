@@ -16,6 +16,15 @@ dynamodb = boto3.resource("dynamodb")
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
 
+ssm_client = boto3.client("ssm", region_name="eu-central-1")
+
+nasa_ads_token = ssm_client.get_parameter(
+    Name="arn:aws:ssm:eu-central-1:796401245269:parameter"
+    + "/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com",
+    WithDecryption=True,
+)["Parameter"]["Value"]
+
+
 @dataclass
 class Pmid:
     pmid: str
@@ -28,12 +37,21 @@ class Pmid:
 
 
 @dataclass
-class PubSlim:
-    pmid: str | None = None
-    title: str | None = None
-    pdate: str | None = None
-    doi: str | None = None
-    bibcodes: list[str] | None = None
+class Orc:
+    shortshort: str
+    name: str
+
+
+@dataclass
+class Pub:
+    pdate: str | None
+    abstract: str | None
+    title: str | None
+    orcs: list[Orc]
+    doi: str | None
+    same_dois: list[str]
+    pmcid: str | None
+    pmid: str | None
 
 
 def get_dy_pmids(pmids: list[str]) -> dict[str, Pmid]:
@@ -135,3 +153,23 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pmid]:
             },
         )
     return dy_pmids
+
+
+def ads_query(query, rows):
+    response = http.request(
+        method="GET",
+        url="https://api.adsabs.harvard.edu/v1/search/query?fl=title,bibcode,doi,pubdate&q="
+        + query,
+        headers={"Authorization": f"Bearer {nasa_ads_token}"},
+    )
+    jresp = json.loads(response.data.decode("utf-8"))
+    logger.info("ads_query_response", extra={"ads_query_response": jresp})
+    return [
+        Pub(
+            title=p.get("title", [None])[0],
+            doi=p.get("doi"),
+            pdate=p.get("pubdate"),
+            bibcodes=[p.get("bibcode")],
+        )
+        for p in jresp.get("response", {}).get("docs", [])
+    ]
