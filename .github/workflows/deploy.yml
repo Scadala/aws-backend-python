@@ -39,6 +39,7 @@ jobs:
           --no-fail-on-empty-changeset
           --s3-bucket samclisourcebucket-d9da8a7d-03a2-496d-98b1-fff5081ccea1
           --s3-prefix "$STACK_NAME"/"$GITHUB_SHA"
+          --capabilities CAPABILITY_IAM
           --parameter-overrides
           PythonRuntime="python$(cat .python-version)"
       - run: >
