@@ -169,8 +169,8 @@ Resources:
   StreamProcessorFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: snodepsrc/
-      Handler: app.lambda_handler
+      CodeUri: nodeps/
+      Handler: dydb.lambda_handler
       Events:
         DynamoDBStream:
           Type: DynamoDB
