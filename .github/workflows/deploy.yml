@@ -50,6 +50,6 @@ jobs:
           | jq -r '.[] | select(.OutputKey == "ApiUrl") | .OutputValue'
           )" >> "$GITHUB_ENV"
       - if: github.event_name == 'pull_request'
-        run: gh pr comment "$GITHUB_REF" --edit-last --create-if-none --body "$url"
+        run: gh pr comment ${{ github.event.number }} --edit-last --create-if-none --body "$url"
         env:
           GH_TOKEN: ${{ github.token }}
