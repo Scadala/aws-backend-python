@@ -5,6 +5,8 @@ on:
       - main
   pull_request:
 
+permissions: {}
+
 jobs:
   deploy:
     runs-on: ubuntu-24.04
@@ -13,6 +15,7 @@ jobs:
       id-token: write
     env:
       SAM_CLI_TELEMETRY: 0
+      STACK_NAME: ${{ format('{0}-pr-{1}', github.event.repository.name, github.event_name == 'push' && github.ref_name || github.event.number) }}
     steps:
       - uses: actions/checkout@v6.0.1
       - uses: actions/setup-python@v6.1.0
@@ -31,30 +34,20 @@ jobs:
           PythonRuntime="python$(cat .python-version)"
       - run: >
           sam deploy
-          --stack-name ${{ github.event.repository.name }}-${{ github.event_name == 'push' && github.ref_name || format('pr-{0}', github.event.number) }}
+          --stack-name "$STACK_NAME"
           --no-confirm-changeset
           --no-fail-on-empty-changeset
           --s3-bucket samclisourcebucket-d9da8a7d-03a2-496d-98b1-fff5081ccea1
-          --s3-prefix ${{ github.event.repository.name }}-${{ github.event_name == 'push' && github.ref_name || format('pr-{0}', github.event.number) }}/"$GITHUB_SHA"
+          --s3-prefix "$STACK_NAME"/"$GITHUB_SHA"
           --parameter-overrides
           PythonRuntime="python$(cat .python-version)"
       - run: >
-          sam list endpoints
-          --stack-name ${{ format('{0}-pr-{1}', github.event.repository.name, github.event.number) }}
-          --output json
-          | jq
-      - run: >
-          sam list endpoints
-          --stack-name ${{ format('{0}-pr-{1}', github.event.repository.name, github.event.number) }}
-          --output json
-          | jq -r '.[] | select(.LogicalResourceId == "ServerlessHttpApi") | .CloudEndpoint[0]'
-      - run: >
           sam list stack-outputs
-          --stack-name ${{ format('{0}-pr-{1}', github.event.repository.name, github.event.number) }}
+          --stack-name "$STACK_NAME"
           --output json
           | jq
       - run: >
           sam list stack-outputs
-          --stack-name ${{ format('{0}-pr-{1}', github.event.repository.name, github.event.number) }}
+          --stack-name "$STACK_NAME"
           --output json
           | jq -r '.[] | select(.OutputKey == "ApiUrl") | .OutputValue'
