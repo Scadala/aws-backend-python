@@ -23,6 +23,10 @@ Globals:
         PMID_TABLE_NAME: !Ref PmidTablev3
 
 Resources:
+  MyApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: stage
   PmidTablev3:
     Type: AWS::DynamoDB::Table
     Properties:
