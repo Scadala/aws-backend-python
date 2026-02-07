@@ -42,12 +42,11 @@ jobs:
           --parameter-overrides
           PythonRuntime="python$(cat .python-version)"
       - run: >
-          sam list stack-outputs
-          --stack-name "$STACK_NAME"
-          --output json
-          | jq
-      - run: >
+          echo url="$(
           sam list stack-outputs
           --stack-name "$STACK_NAME"
           --output json
           | jq -r '.[] | select(.OutputKey == "ApiUrl") | .OutputValue'
+          )" >> "$GITHUB_ENV"
+      - if: github.event_name == 'pull_request'
+        run: gh pr comment "$GITHUB_REF" --edit-last --create-if-none --body "$url"
