@@ -58,6 +58,11 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev3
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
         E1:
           Type: HttpApi
