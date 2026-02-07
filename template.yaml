@@ -171,9 +171,6 @@ Resources:
     Properties:
       CodeUri: snodepsrc/
       Handler: app.lambda_handler
-      Policies:
-        - DynamoDBStreamReadPolicy:
-            StreamName: !GetAtt PmidTablev3.StreamArn
       Events:
         DynamoDBStream:
           Type: DynamoDB
