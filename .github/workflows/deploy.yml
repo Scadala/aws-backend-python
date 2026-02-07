@@ -38,5 +38,8 @@ jobs:
           --s3-prefix ${{ github.event.repository.name }}-${{ github.event_name == 'push' && github.ref_name || format('pr-{0}', github.event.number) }}/"$GITHUB_SHA"
           --parameter-overrides
           PythonRuntime="python$(cat .python-version)"
-      - if: ${{ github.event_name == 'pull_request' }}
-        run: sam list endpoints --stack-name ${{ format('{0}-pr-{1}', github.event.repository.name, github.event.number) }} --output table
+      - run: >
+          sam list endpoints
+          --stack-name ${{ format('{0}-pr-{1}', github.event.repository.name, github.event.number) }}
+          --output json
+          | jq
