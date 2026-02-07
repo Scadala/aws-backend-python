@@ -23,10 +23,6 @@ Globals:
         PMID_TABLE_NAME: !Ref PmidTablev3
 
 Resources:
-  MyApi:
-    Type: AWS::Serverless::HttpApi
-    Properties:
-      StageName: stage
   PmidTablev3:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -45,7 +41,7 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        HelloWorld:
+        E1:
           Type: HttpApi
           Properties:
             Path: /
@@ -63,7 +59,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev3
       Events:
-        HelloWorld:
+        E1:
           Type: HttpApi
           Properties:
             Path: /search
@@ -76,7 +72,7 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        HelloWorld:
+        E1:
           Type: HttpApi
           Properties:
             Path: /doi.org/{doi+}
@@ -89,7 +85,7 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        HelloWorld:
+        E1:
           Type: HttpApi
           Properties:
             Path: /pubmed.ncbi.nlm.nih.gov/{pmid}
@@ -152,6 +148,6 @@ Resources:
             Method: get
 
 Outputs:
-  HelloWorldApi:
+  BaseUrl:
     Description: "API Gateway endpoint URL"
     Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/"
