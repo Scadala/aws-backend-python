@@ -173,7 +173,7 @@ Resources:
       Handler: app.lambda_handler
       Policies:
         - DynamoDBStreamReadPolicy:
-            TableName: !Ref PmidTablev3
+            StreamName: !GetAtt PmidTablev3.StreamArn
       Events:
         DynamoDBStream:
           Type: DynamoDB
