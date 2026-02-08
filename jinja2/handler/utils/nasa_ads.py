@@ -1,7 +1,7 @@
 import boto3
 
 from . import Pub
-import json
+import simplejson as json
 import logging
 import urllib3
 

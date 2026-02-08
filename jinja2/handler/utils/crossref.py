@@ -1,7 +1,7 @@
 from . import Pub
 
 import logging
-import json
+import simplejson as json
 from datetime import date
 import urllib3
 

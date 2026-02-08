@@ -1,4 +1,4 @@
-import json
+import simplejson as json
 import logging
 import boto3
 from urllib.parse import urlencode, quote_plus

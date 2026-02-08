@@ -3,7 +3,7 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from datetime import date
 from urllib.parse import unquote_plus
-import json
+import simplejson as json
 from dataclasses import dataclass
 
 from .utils.crossref import cr_lookup

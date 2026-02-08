@@ -1,6 +1,6 @@
 from . import Pub
 import os
-import json
+import simplejson as json
 from xml.etree import ElementTree
 import logging
 
