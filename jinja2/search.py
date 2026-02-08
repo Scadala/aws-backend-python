@@ -2,14 +2,13 @@ import os
 import logging
 from datetime import date
 from urllib.parse import unquote_plus
-from dataclasses import dataclass, field
 from functools import lru_cache
 from collections import defaultdict
 
 from jinja2 import Environment, FileSystemLoader
 import simplejson as json
 
-from utils import get_dy_pmids, http
+from utils import get_dy_pmids, http, Pub, ads_query
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -21,16 +20,6 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
 index_template = jinja_env.get_template("query.html")
-
-
-@dataclass
-class Publication:
-    title: str
-    ncits: int = 0
-    pmids: list[int] | None = field(default_factory=list)
-    dois: list[str] | None = field(default_factory=list)
-    pdate: date | None = None
-    bibcodes: list[str] = field(default_factory=list)
 
 
 def lambda_handler(event, context):
@@ -76,6 +65,9 @@ def lambda_handler(event, context):
         return {"statusCode": 302, "headers": {"Location": "/"}}
     query = params["query"]
 
+    nasa_ads_data = ads_query(query=query, rows=25)
+    # logger.info("nasa_ads_data", extra={"nasa_ads_data": nasa_ads_data})
+
     data = crossref_query(query=query, rows=25)
     logger.info("data", extra={"data": data})
 
@@ -95,8 +87,9 @@ def lambda_handler(event, context):
 
     doi2pmids = defaultdict(set)
     for dy_pmid in dy_pmids.values():
-        if dy_pmid.doi:
-            doi2pmids[dy_pmid.doi].add(dy_pmid.pmid)
+        if dy_pmid.dois:
+            for doi in dy_pmid.dois:
+                doi2pmids[doi].add(dy_pmid.pmids[0])
 
     return {
         "statusCode": 200,
@@ -106,7 +99,7 @@ def lambda_handler(event, context):
             name=session.get("name"),
             title=params.get("query"),
             pubs=[
-                Publication(
+                Pub(
                     title=item.get("title", [None])[0],
                     dois=[item["DOI"]],
                     pdate=pdate_from_item(item),
@@ -114,15 +107,8 @@ def lambda_handler(event, context):
                 )
                 for item in data["message"]["items"]
             ]
-            + [
-                Publication(
-                    title=dy_pmids[pmid].title,
-                    dois=[dy_pmids[pmid].doi] if dy_pmids[pmid].doi else [],
-                    pdate=dy_pmids[pmid].sortpubdate,
-                    pmids=[dy_pmids[pmid].pmid],
-                )
-                for pmid in pmids
-            ],
+            + [dy_pmids[pmid] for pmid in pmids]
+            + nasa_ads_data,
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
