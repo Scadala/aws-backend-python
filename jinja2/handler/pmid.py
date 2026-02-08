@@ -3,7 +3,8 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from urllib.parse import unquote_plus
 
-from .utils import get_dy_pmids, Pub
+from .utils import Pub
+from .utils.pubmed import get_dy_pmids
 
 
 # Set up logging

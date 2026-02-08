@@ -3,7 +3,7 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from urllib.parse import unquote_plus
 
-from .utils import ads_query
+from .utils.nasa_ads import ads_query
 
 
 # Set up logging
