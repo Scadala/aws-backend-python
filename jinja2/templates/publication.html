@@ -176,13 +176,13 @@
                     {% endfor %}
                 </td>
             </tr>
-            {% endif %} {% if pub.bibcodes|length > 0 %}
+            {% endif %} {% if pub.bibcodes and pub.bibcodes|length > 0 %}
             <tr>
                 <th scope="row">same BIBCODEs</th>
                 <td>
                     {% for bibcode in pub.bibcodes %}
                     <div>
-                        <a href="bibcode/{{ bibcode }}">{{ bibcode }}</a>
+                        <a href="/ui.adsabs.harvard.edu/abs/{{ bibcode }}">{{ bibcode }}</a>
                     </div>
                     {% endfor %}
                 </td>
