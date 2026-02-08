@@ -1,16 +1,18 @@
 import os
 import logging
 from jinja2 import Environment, FileSystemLoader
+from datetime import date
 from urllib.parse import unquote_plus
+import simplejson as json
+from dataclasses import dataclass
 
-from utils import get_dy_pmids, Pub
-
+from .utils.crossref import cr_lookup
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 # Set up Jinja2 environment to load templates from the templates directory
-template_dir = os.path.join(os.path.dirname(__file__), "templates")
+template_dir = os.path.join("templates")
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
@@ -27,21 +29,18 @@ def lambda_handler(event, context):
     }
     logger.info("session", extra={"session": session})
 
-    pmid = event["pathParameters"]["pmid"]
-
-    data = get_dy_pmids(pmids=[pmid])[pmid]
-
+    pub = cr_lookup(event["pathParameters"]["doi"])
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
         "body": index_template.render(
-            isindex=False,
+            isindex=True,
             name=session.get("name"),
-            title=data.title if data.title else "",
+            title=pub.title,
             rawPath=event["rawPath"],
             orcweb=None,
-            pub=data,
-            refs=[Pub(pmids=ref.pmids) for ref in data.refs] if data.refs else [],
+            pub=pub,
+            refs=[],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],

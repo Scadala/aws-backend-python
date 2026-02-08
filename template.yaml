@@ -39,7 +39,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: index.lambda_handler
+      Handler: src.index.lambda_handler
       Architectures:
         - x86_64
       Events:
@@ -52,7 +52,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: search.lambda_handler
+      Handler: src.search.lambda_handler
       Architectures:
         - x86_64
       Timeout: 900 # seconds (max 900)
@@ -75,7 +75,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: doi.lambda_handler
+      Handler: src.doi.lambda_handler
       Architectures:
         - x86_64
       Policies:
@@ -96,7 +96,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: pmid.lambda_handler
+      Handler: src.pmid.lambda_handler
       Architectures:
         - x86_64
       Events:
@@ -117,7 +117,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: bibcode.lambda_handler
+      Handler: src.bibcode.lambda_handler
       Architectures:
         - x86_64
       Policies:
@@ -138,7 +138,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: nodeps/
-      Handler: auth.lambda_handler
+      Handler: src.auth.lambda_handler
       Architectures:
         - x86_64
       Policies:
@@ -158,7 +158,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: nodeps/
-      Handler: callback.lambda_handler
+      Handler: src.callback.lambda_handler
       Architectures:
         - x86_64
       Policies:
@@ -178,7 +178,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: nodeps/
-      Handler: logout.lambda_handler
+      Handler: src.logout.lambda_handler
       Architectures:
         - x86_64
       Events:
@@ -191,7 +191,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: nodeps/
-      Handler: dydb.lambda_handler
+      Handler: src.dydb.lambda_handler
       Events:
         DynamoDBStream:
           Type: DynamoDB

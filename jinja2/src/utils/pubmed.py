@@ -1,48 +1,17 @@
-import simplejson as json
-import logging
+from . import Pub
 import os
+import simplejson as json
+from xml.etree import ElementTree
+import logging
 
 import boto3
 import urllib3
-from dataclasses import dataclass, asdict
-
-
-from xml.etree import ElementTree
-
-logger = logging.getLogger(__name__)
-dynamodb = boto3.resource("dynamodb")
-
 
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
 
-ssm_client = boto3.client("ssm", region_name="eu-central-1")
-
-nasa_ads_token = ssm_client.get_parameter(
-    Name="arn:aws:ssm:eu-central-1:796401245269:parameter"
-    + "/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com",
-    WithDecryption=True,
-)["Parameter"]["Value"]
-
-
-@dataclass
-class Orc:
-    shortshort: str
-    name: str
-
-
-@dataclass
-class Pub:
-    pdate: str | None = None
-    abstract: str | None = None
-    title: str | None = None
-    orcs: list[Orc] | None = None
-    dois: list[str] | None = None
-    pmcids: list[str] | None = None
-    pmids: list[str] | None = None
-    bibcodes: list[str] | None = None
-    refs: list["Pub"] | None = None
-    cits: list["Pub"] | None = None
+dynamodb = boto3.resource("dynamodb")
+logger = logging.getLogger(__name__)
 
 
 def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
@@ -135,43 +104,18 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
                     if ref_element.text is not None
                 ],
             )
-        logger.info(
-            "dy_pmids",
-            extra={
-                "dy_pmids": {
-                    pmid: asdict(pmid_data) for pmid, pmid_data in dy_pmids.items()
-                }
-            },
-        )
     return dy_pmids
 
 
-def ads_query(query: str, rows: int = 10, detailed: bool = False) -> list[Pub]:
-    fl = [
-        "title",
-        "bibcode",
-        "doi",
-        "pubdate",
-        "alternate_bibcode",
-        "identifier",
-        "id",
-    ]
-    if detailed:
-        fl += ["abstract", "author", "aff", "orcid"]
-    response = http.request(
+def pubmed_query(query: str, retmax: int) -> list[Pub]:
+    url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={retmax}&sort=relevance&term={query}"
+    logger.info("pubmed_url length: %s, %s", len(url), url)
+    pubmed_response = http.request(
         method="GET",
-        url=f"https://api.adsabs.harvard.edu/v1/search/query?fl={','.join(fl)}&q={query}&rows={rows}",
-        headers={"Authorization": f"Bearer {nasa_ads_token}"},
+        url=url,
     )
-    jresp = json.loads(response.data.decode("utf-8"))
-    logger.info("ads_query_response", extra={"ads_query_response": jresp})
-    return [
-        Pub(
-            title=p.get("title", [None])[0],
-            pdate=p.get("pubdate"),
-            bibcodes=[p.get("bibcode")] + p.get("alternate_bibcode", []),
-            abstract=p.get("abstract"),
-            dois=p.get("doi"),
-        )
-        for p in jresp.get("response", {}).get("docs", [])
-    ]
+    data = json.loads(pubmed_response.data.decode("utf-8"))
+    logger.info("pubmed_response", extra={"pubmed_response": data})
+    pmids = data.get("esearchresult", {}).get("idlist", [])
+    pubs = get_dy_pmids(pmids=pmids)
+    return [pubs[pmid] for pmid in pmids]

@@ -1,21 +1,20 @@
 import os
 import logging
-from datetime import date
 from urllib.parse import unquote_plus
-from functools import lru_cache
 from collections import defaultdict
 
 from jinja2 import Environment, FileSystemLoader
-import simplejson as json
 
-from utils import get_dy_pmids, http, Pub, ads_query
+from .utils.crossref import cr_query
+from .utils.pubmed import pubmed_query
+from .utils.nasa_ads import ads_query
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 
 # Set up Jinja2 environment to load templates from the templates directory
-template_dir = os.path.join(os.path.dirname(__file__), "templates")
+template_dir = os.path.join("templates")
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
@@ -68,25 +67,18 @@ def lambda_handler(event, context):
     nasa_ads_data = ads_query(query=query, rows=25)
     # logger.info("nasa_ads_data", extra={"nasa_ads_data": nasa_ads_data})
 
-    data = crossref_query(query=query, rows=25)
-    logger.info("data", extra={"data": data})
+    data = cr_query(query=query, rows=25)
 
-    dois = {item["DOI"] for item in data["message"]["items"]}
+    dois = {doi for pub in data for doi in pub.dois}
     q_pubmed = query
     if len(dois) > 0:
         q_pubmed += "+OR+"
         q_pubmed += "+OR+".join([f"{d}[aid]" for d in dois])
 
     pubmed_data = pubmed_query(query=q_pubmed, retmax=25)
-    logger.info("pubmed_data", extra={"pubmed_data": pubmed_data})
-
-    pmids = pubmed_data.get("esearchresult", {}).get("idlist", [])
-    logger.info("pmids", extra={"pmids": pmids})
-
-    dy_pmids = get_dy_pmids(pmids=pmids)
 
     doi2pmids = defaultdict(set)
-    for dy_pmid in dy_pmids.values():
+    for dy_pmid in pubmed_data:
         if dy_pmid.dois:
             for doi in dy_pmid.dois:
                 doi2pmids[doi].add(dy_pmid.pmids[0])
@@ -98,54 +90,8 @@ def lambda_handler(event, context):
             isindex=True,
             name=session.get("name"),
             title=params.get("query"),
-            pubs=[
-                Pub(
-                    title=item.get("title", [None])[0],
-                    dois=[item["DOI"]],
-                    pdate=pdate_from_item(item),
-                    pmids=list(doi2pmids[item["DOI"]]),
-                )
-                for item in data["message"]["items"]
-            ]
-            + [dy_pmids[pmid] for pmid in pmids]
-            + nasa_ads_data,
+            pubs=data + pubmed_data + nasa_ads_data,
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
     }
-
-
-def pdate_from_item(item):
-    for pdatetag in [
-        "issued",
-        "posted",
-        "accepted",
-        "published-print",
-        "published-online",
-    ]:
-        if pdatetag in item and None not in item[pdatetag]["date-parts"][0][:3]:
-            return date(*(item[pdatetag]["date-parts"][0] + [1, 1])[:3])
-
-
-@lru_cache(maxsize=128)
-def crossref_query(query: str, rows: int):
-    response = http.request(
-        method="GET",
-        url=f"https://api.crossref.org/works?rows={rows}&query=" + query,
-    )
-    return json.loads(response.data.decode("utf-8"))
-
-
-@lru_cache(maxsize=128)
-def pubmed_query(query: str, retmax: int):
-    url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={retmax}&sort=relevance&term={query}"
-    logger.info("pubmed_url length: %s, %s", len(url), url)
-    pubmed_response = http.request(
-        method="GET",
-        url=url,
-    )
-    try:
-        return json.loads(pubmed_response.data.decode("utf-8"))
-    except json.JSONDecodeError:
-        logger.error("failed to decode json: %s", pubmed_response.data)
-        return {}
