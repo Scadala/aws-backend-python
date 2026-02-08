@@ -64,8 +64,9 @@ def lambda_handler(event, context):
         return {"statusCode": 302, "headers": {"Location": "/"}}
     query = params["query"]
 
+    logger.info("before nasa ads data")
     nasa_ads_data = ads_query(query=query, rows=25)
-    # logger.info("nasa_ads_data", extra={"nasa_ads_data": nasa_ads_data})
+    logger.info("after nasa ads data")
 
     data = cr_query(query=query, rows=25)
 
