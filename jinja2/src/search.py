@@ -8,6 +8,7 @@ from jinja2 import Environment, FileSystemLoader
 from .utils.crossref import cr_query
 from .utils.pubmed import pubmed_query
 from .utils.nasa_ads import ads_query
+from .utils import order_pubs
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -89,7 +90,7 @@ def lambda_handler(event, context):
             isindex=True,
             name=session.get("name"),
             title=params.get("query"),
-            pubs=data + pubmed_data + nasa_ads_data,
+            pubs=order_pubs(data, pubmed_data, nasa_ads_data),
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
