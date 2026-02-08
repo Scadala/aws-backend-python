@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
+    if len(pmids) == 0:
+        return {}
     dyndb_response = dynamodb.batch_get_item(
         RequestItems={
             os.environ["PMID_TABLE_NAME"]: {"Keys": [{"pmid": pmid} for pmid in pmids]}

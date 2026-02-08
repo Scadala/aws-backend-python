@@ -65,23 +65,21 @@ def lambda_handler(event, context):
         return {"statusCode": 302, "headers": {"Location": "/"}}
     query = params["query"]
 
-    nasa_ads_data = ads_query(query=query, rows=25)
-
     data = cr_query(query=query, rows=25)
 
-    dois = {doi for pub in data for doi in pub.dois}
+    cr_dois = {doi for pub in data for doi in pub.dois or []}
     q_pubmed = query
-    if len(dois) > 0:
+    if len(cr_dois) > 0:
         q_pubmed += "+OR+"
-        q_pubmed += "+OR+".join([f"{d}[aid]" for d in dois])
+        q_pubmed += "+OR+".join([f"{d}[aid]" for d in cr_dois])
 
     pubmed_data = pubmed_query(query=q_pubmed, retmax=25)
 
-    doi2pmids = defaultdict(set)
-    for dy_pmid in pubmed_data:
-        if dy_pmid.dois:
-            for doi in dy_pmid.dois:
-                doi2pmids[doi].add(dy_pmid.pmids[0])
+    nasa_ads_query = query
+    if len(cr_dois) > 0:
+        nasa_ads_query += " OR "
+        nasa_ads_query += " OR ".join([f'doi:"{d}"' for d in cr_dois])
+    nasa_ads_data = ads_query(query=nasa_ads_query, rows=25)
 
     return {
         "statusCode": 200,
