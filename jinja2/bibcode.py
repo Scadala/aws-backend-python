@@ -29,7 +29,7 @@ def lambda_handler(event, context):
 
     bibcode = event["pathParameters"]["bibcode"]
 
-    data = ads_query(query=f"bibcode:{bibcode}")[0]
+    data = ads_query(query=f"alternate_bibcode:{bibcode} or bibcode:{bibcode}")[0]
 
     return {
         "statusCode": 200,

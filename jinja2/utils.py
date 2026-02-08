@@ -146,7 +146,7 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
     return dy_pmids
 
 
-def ads_query(query: str, rows: int, detailed: bool = False) -> list[Pub]:
+def ads_query(query: str, rows: int = 10, detailed: bool = False) -> list[Pub]:
     fl = [
         "title",
         "bibcode",
