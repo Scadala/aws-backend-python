@@ -39,7 +39,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: index.lambda_handler
+      Handler: handler.index.lambda_handler
       Architectures:
         - x86_64
       Events:
@@ -52,7 +52,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: search.lambda_handler
+      Handler: handler.search.lambda_handler
       Architectures:
         - x86_64
       Timeout: 900 # seconds (max 900)
@@ -75,7 +75,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: doi.lambda_handler
+      Handler: handler.doi.lambda_handler
       Architectures:
         - x86_64
       Policies:
@@ -96,7 +96,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: pmid.lambda_handler
+      Handler: handler.pmid.lambda_handler
       Architectures:
         - x86_64
       Events:
@@ -117,7 +117,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: jinja2/
-      Handler: bibcode.lambda_handler
+      Handler: handler.bibcode.lambda_handler
       Architectures:
         - x86_64
       Policies:
