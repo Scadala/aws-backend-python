@@ -3,14 +3,14 @@ import logging
 from jinja2 import Environment, FileSystemLoader
 from urllib.parse import unquote_plus
 
-from utils import ads_query
+from .utils import get_dy_pmids, Pub
 
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 # Set up Jinja2 environment to load templates from the templates directory
-template_dir = os.path.join(os.path.dirname(__file__), "templates")
+template_dir = os.path.join("templates")
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
@@ -27,9 +27,9 @@ def lambda_handler(event, context):
     }
     logger.info("session", extra={"session": session})
 
-    bibcode = event["pathParameters"]["bibcode"]
+    pmid = event["pathParameters"]["pmid"]
 
-    data = ads_query(query=f"alternate_bibcode:{bibcode} or bibcode:{bibcode}")[0]
+    data = get_dy_pmids(pmids=[pmid])[pmid]
 
     return {
         "statusCode": 200,
@@ -41,7 +41,7 @@ def lambda_handler(event, context):
             rawPath=event["rawPath"],
             orcweb=None,
             pub=data,
-            refs=[],
+            refs=[Pub(pmids=ref.pmids) for ref in data.refs] if data.refs else [],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],

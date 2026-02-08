@@ -8,14 +8,14 @@ from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader
 import simplejson as json
 
-from utils import get_dy_pmids, http, Pub, ads_query
+from .utils import get_dy_pmids, http, Pub, ads_query
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
 
 # Set up Jinja2 environment to load templates from the templates directory
-template_dir = os.path.join(os.path.dirname(__file__), "templates")
+template_dir = os.path.join("templates")
 jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
