@@ -66,7 +66,7 @@ def lambda_handler(event, context):
 
     logger.info("before nasa ads data")
     nasa_ads_data = ads_query(query=query, rows=25)
-    logger.info("after nasa ads data")
+    logger.info("after nasa ads data, len: %s", len(nasa_ads_data))
 
     data = cr_query(query=query, rows=25)
 
