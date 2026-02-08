@@ -33,8 +33,6 @@ Resources:
       KeySchema:
         - AttributeName: pmid
           KeyType: HASH
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
   IndexFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -43,7 +41,7 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        E1:
+        HelloWorld:
           Type: HttpApi
           Properties:
             Path: /
@@ -60,13 +58,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev3
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
-        E1:
+        HelloWorld:
           Type: HttpApi
           Properties:
             Path: /search
@@ -78,16 +71,8 @@ Resources:
       Handler: doi.lambda_handler
       Architectures:
         - x86_64
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref PmidTablev3
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
-        E1:
+        HelloWorld:
           Type: HttpApi
           Properties:
             Path: /doi.org/{doi+}
@@ -100,7 +85,7 @@ Resources:
       Architectures:
         - x86_64
       Events:
-        E1:
+        HelloWorld:
           Type: HttpApi
           Properties:
             Path: /pubmed.ncbi.nlm.nih.gov/{pmid}
@@ -108,32 +93,6 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev3
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
-  BibCodeFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: jinja2/
-      Handler: bibcode.lambda_handler
-      Architectures:
-        - x86_64
-      Policies:
-        - DynamoDBCrudPolicy:
-            TableName: !Ref PmidTablev3
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
-      Events:
-        E1:
-          Type: HttpApi
-          Properties:
-            Path: /ui.adsabs.harvard.edu/abs/{bibcode}
-            Method: get
   AuthFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -187,21 +146,8 @@ Resources:
           Properties:
             Path: /logout
             Method: get
-  StreamProcessorFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: nodeps/
-      Handler: dydb.lambda_handler
-      Events:
-        DynamoDBStream:
-          Type: DynamoDB
-          Properties:
-            Stream: !GetAtt PmidTablev3.StreamArn
-            StartingPosition: TRIM_HORIZON
-            BatchSize: 100
-            Enabled: true
 
 Outputs:
-  ApiUrl:
+  HelloWorldApi:
     Description: "API Gateway endpoint URL"
     Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/"

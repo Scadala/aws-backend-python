@@ -16,36 +16,27 @@ dynamodb = boto3.resource("dynamodb")
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
 
-ssm_client = boto3.client("ssm", region_name="eu-central-1")
-
-nasa_ads_token = ssm_client.get_parameter(
-    Name="arn:aws:ssm:eu-central-1:796401245269:parameter"
-    + "/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com",
-    WithDecryption=True,
-)["Parameter"]["Value"]
+@dataclass
+class Pmid:
+    pmid: str
+    title: str | None
+    abstract: str | None
+    sortpubdate: str | None
+    doi: str | None
+    pmc: str | None
+    refs: list[str]
 
 
 @dataclass
-class Orc:
-    shortshort: str
-    name: str
-
-
-@dataclass
-class Pub:
-    pdate: str | None = None
-    abstract: str | None = None
+class PubSlim:
+    pmid: str | None = None
     title: str | None = None
-    orcs: list[Orc] | None = None
-    dois: list[str] | None = None
-    pmcids: list[str] | None = None
-    pmids: list[str] | None = None
+    pdate: str | None = None
+    doi: str | None = None
     bibcodes: list[str] | None = None
-    refs: list["Pub"] | None = None
-    cits: list["Pub"] | None = None
 
 
-def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
+def get_dy_pmids(pmids: list[str]) -> dict[str, Pmid]:
     dyndb_response = dynamodb.batch_get_item(
         RequestItems={
             os.environ["PMID_TABLE_NAME"]: {"Keys": [{"pmid": pmid} for pmid in pmids]}
@@ -55,7 +46,7 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
     # return {d["uid"]: d for d in json.loads(json.dumps(dy_list, use_decimal=True))}
 
     dy_pmids = {
-        d["pmid"]: Pub(**d) for d in json.loads(json.dumps(dy_list, use_decimal=True))
+        d["pmid"]: Pmid(**d) for d in json.loads(json.dumps(dy_list, use_decimal=True))
     }
     logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
 
@@ -122,15 +113,15 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
                 ".//PubmedData/ReferenceList/Reference/ArticleIdList/ArticleId[@IdType='pubmed']"
             )
 
-            dy_pmids[pmid] = Pub(
-                pmids=[pmid],
+            dy_pmids[pmid] = Pmid(
+                pmid=pmid,
                 title=title,
                 abstract=abstract,
-                pdate=sortpubdate,
-                dois=[doi] if doi else None,
-                pmcids=[pmc] if pmc else None,
+                sortpubdate=sortpubdate,
+                doi=doi,
+                pmc=pmc,
                 refs=[
-                    Pub(pmids=[ref_element.text])
+                    ref_element.text
                     for ref_element in refs_elements
                     if ref_element.text is not None
                 ],
@@ -144,34 +135,3 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
             },
         )
     return dy_pmids
-
-
-def ads_query(query: str, rows: int, detailed: bool = False) -> list[Pub]:
-    fl = [
-        "title",
-        "bibcode",
-        "doi",
-        "pubdate",
-        "alternate_bibcode",
-        "identifier",
-        "id",
-    ]
-    if detailed:
-        fl += ["abstract", "author", "aff", "orcid"]
-    response = http.request(
-        method="GET",
-        url=f"https://api.adsabs.harvard.edu/v1/search/query?fl={','.join(fl)}&q={query}&rows={rows}",
-        headers={"Authorization": f"Bearer {nasa_ads_token}"},
-    )
-    jresp = json.loads(response.data.decode("utf-8"))
-    logger.info("ads_query_response", extra={"ads_query_response": jresp})
-    return [
-        Pub(
-            title=p.get("title", [None])[0],
-            pdate=p.get("pubdate"),
-            bibcodes=[p.get("bibcode")] + p.get("alternate_bibcode", []),
-            abstract=p.get("abstract"),
-            dois=p.get("doi"),
-        )
-        for p in jresp.get("response", {}).get("docs", [])
-    ]

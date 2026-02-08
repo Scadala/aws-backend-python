@@ -1,9 +1,11 @@
 import os
 import logging
 from jinja2 import Environment, FileSystemLoader
+from datetime import date
 from urllib.parse import unquote_plus
+from dataclasses import dataclass, asdict
 
-from utils import get_dy_pmids, Pub
+from utils import get_dy_pmids, PubSlim, Pmid
 
 
 # Set up logging
@@ -31,6 +33,7 @@ def lambda_handler(event, context):
 
     data = get_dy_pmids(pmids=[pmid])[pmid]
 
+    logger.info("data", extra={"data": asdict(data)})
     return {
         "statusCode": 200,
         "isBase64Encoded": False,
@@ -40,9 +43,74 @@ def lambda_handler(event, context):
             title=data.title if data.title else "",
             rawPath=event["rawPath"],
             orcweb=None,
-            pub=data,
-            refs=[Pub(pmids=ref.pmids) for ref in data.refs] if data.refs else [],
+            pub=make_pub(data),
+            refs=[PubSlim(pmid=ref) for ref in data.refs],
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],
     }
+
+
+def make_pub(data: Pmid):
+    return Pub(
+        pdate=data.sortpubdate,
+        abstract=data.abstract,
+        title=data.title,
+        orcs=[],
+        doi=data.doi,
+        same_dois=[data.doi] if data.doi is not None else [],
+        pmcid=data.pmc,
+        pmid=data.pmid,
+    )
+
+
+def make_orc(data):
+    return Orc(
+        shortshort=data.get("ORCID").split("/")[-1],
+        name=data.get("family"),
+    )
+
+
+def pdate_from_item(item):
+    for pdatetag in [
+        "issued",
+        "posted",
+        "accepted",
+        "published-print",
+        "published-online",
+    ]:
+        if pdatetag in item and None not in item[pdatetag]["date-parts"][0][:3]:
+            return date(*(item[pdatetag]["date-parts"][0] + [1, 1])[:3])
+
+
+@dataclass
+class Orc:
+    shortshort: str
+    name: str
+
+
+@dataclass
+class Pub:
+    pdate: str | None
+    abstract: str | None
+    title: str | None
+    orcs: list[Orc]
+    doi: str | None
+    same_dois: list[str]
+    pmcid: str | None
+    pmid: str | None
+
+
+@dataclass
+class DoiRef:
+    doi: str
+    pdate: str
+    title: str
+
+
+def make_ref(data):
+    return DoiRef(
+        doi=data["DOI"],
+        title=data.get("unstructured"),
+        pdate=data.get("year"),
+    )
