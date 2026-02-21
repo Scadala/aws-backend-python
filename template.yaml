@@ -21,6 +21,7 @@ Globals:
     Environment:
       Variables:
         PMID_TABLE_NAME: !Ref PmidTablev3
+        SEARCH_CACHE_TABLE_NAME: !Ref SearchCache
 
 Resources:
   PmidTablev3:
