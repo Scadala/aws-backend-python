@@ -42,8 +42,6 @@ Resources:
       AttributeDefinitions:
         - AttributeName: url
           AttributeType: S
-        - AttributeName: text
-          AttributeType: S
       KeySchema:
         - AttributeName: url
           KeyType: HASH
