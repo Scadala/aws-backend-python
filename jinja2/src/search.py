@@ -64,9 +64,9 @@ def lambda_handler(event, context):
         return {"statusCode": 302, "headers": {"Location": "/"}}
     query = params["query"]
 
-    data = cr_query(query=query, rows=1000)
-    pubmed_data = pubmed_query(query=query, retmax=2000)
-    nasa_ads_data = ads_query(query=query, rows=2000)
+    data = cr_query(query=query, rows=1000)  # 179300401
+    pubmed_data = pubmed_query(query=query, retmax=224)  # 40143958
+    nasa_ads_data = ads_query(query=query, rows=180)  # 32296235
 
     return {
         "statusCode": 200,
