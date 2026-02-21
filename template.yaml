@@ -35,6 +35,18 @@ Resources:
           KeyType: HASH
       StreamSpecification:
         StreamViewType: NEW_AND_OLD_IMAGES
+  SearchCache:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: url
+          AttributeType: S
+        - AttributeName: text
+          AttributeType: S
+      KeySchema:
+        - AttributeName: url
+          KeyType: HASH
   IndexFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -60,6 +72,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev3
+        - DynamoDBCrudPolicy:
+            TableName: !Ref SearchCache
         - Statement:
             - Effect: Allow
               Action:

@@ -1,7 +1,6 @@
 import os
 import logging
 from urllib.parse import unquote_plus
-from collections import defaultdict
 
 from jinja2 import Environment, FileSystemLoader
 
@@ -65,21 +64,9 @@ def lambda_handler(event, context):
         return {"statusCode": 302, "headers": {"Location": "/"}}
     query = params["query"]
 
-    data = cr_query(query=query, rows=25)
-
-    cr_dois = {doi for pub in data for doi in pub.dois or []}
-    q_pubmed = query
-    if len(cr_dois) > 0:
-        q_pubmed += "+OR+"
-        q_pubmed += "+OR+".join([f"{d}[aid]" for d in cr_dois])
-
-    pubmed_data = pubmed_query(query=q_pubmed, retmax=25)
-
-    nasa_ads_query = query
-    if len(cr_dois) > 0:
-        nasa_ads_query += " OR "
-        nasa_ads_query += " OR ".join([f'doi:"{d}"' for d in cr_dois])
-    nasa_ads_data = ads_query(query=nasa_ads_query, rows=25)
+    data = cr_query(query=query, rows=1000)
+    pubmed_data = pubmed_query(query=query, retmax=2000)
+    nasa_ads_data = ads_query(query=query, rows=2000)
 
     return {
         "statusCode": 200,
