@@ -5,7 +5,7 @@ from urllib.parse import unquote_plus
 from jinja2 import Environment, FileSystemLoader
 
 from .utils.crossref import cr_query
-from .utils.pubmed import pubmed_query
+from .utils.pubmed import pubmed_query, search_dois
 from .utils.nasa_ads import ads_query
 from .utils import order_pubs
 
@@ -67,6 +67,19 @@ def lambda_handler(event, context):
     data = cr_query(query=query, rows=1000)  # 179300401
     pubmed_data = pubmed_query(query=query, retmax=224)  # 40143958
     nasa_ads_data = ads_query(query=query, rows=180)  # 32296235
+
+    doi2pmid = {
+        doi: pmid
+        for pm_data in pubmed_data
+        for doi in pm_data.dois or []
+        for pmid in pm_data.pmids or []
+    }
+    doi_no_pmid = {doi for d in data for doi in d.dois or [] if doi not in doi2pmid} | {
+        doi for d in nasa_ads_data for doi in d.dois or [] if doi not in doi2pmid
+    }
+    logger.info("doi_no_pmid", extra={"len": len(doi_no_pmid)})
+    pmid_doi_query = search_dois(doi_no_pmid)
+    logger.info("pmid_doi_query", extra={"len": len(pmid_doi_query)})
 
     return {
         "statusCode": 200,

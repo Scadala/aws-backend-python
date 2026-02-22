@@ -166,3 +166,31 @@ def pubmed_query(query: str, retmax: int) -> list[Pub]:
     pmids = data.get("esearchresult", {}).get("idlist", [])
     pubs = get_dy_pmids(pmids=pmids)
     return [pubs[pmid] for pmid in pmids]
+
+
+def search_dois(dois: set[str]) -> dict[str, Pub]:
+    base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&term="
+    doi2pub: dict[str, Pub] = {}
+    dois_temp: set[str] = set()
+    for i in range(len(dois)):
+        doi = dois.pop()
+        if (
+            i == len(dois) - 1
+            or len(base_url + "+OR+".join([f"{d}[aid]" for d in dois_temp | {doi}]))
+            > 2000
+        ):
+            url = base_url + "+OR+".join([f"{d}[aid]" for d in dois_temp])
+            logger.info("search_dois_url length: %s, %s", len(url), url)
+            pubmed_response = http.request(
+                method="GET",
+                url=url,
+            )
+            decoded_response = pubmed_response.data.decode("utf-8")
+            data = json.loads(decoded_response)
+            pmids = data.get("esearchresult", {}).get("idlist", [])
+            if len(pmids) > 0:
+                doi2pub |= get_dy_pmids(pmids=pmids)
+            dois_temp = {doi}
+        else:
+            dois_temp.add(doi)
+    return doi2pub
