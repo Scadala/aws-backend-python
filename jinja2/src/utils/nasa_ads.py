@@ -67,7 +67,7 @@ def ads_query(query: str, rows: int = 10, detailed: bool = False) -> list[Pub]:
             pdate=p.get("pubdate"),
             bibcodes=[p.get("bibcode")] + p.get("alternate_bibcode", []),
             abstract=p.get("abstract"),
-            dois=p.get("doi"),
+            dois=[doi.lower() for doi in p["doi"]] if p.get("doi") else None,
         )
         for p in jresp.get("response", {}).get("docs", [])
     ]

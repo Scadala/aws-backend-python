@@ -108,7 +108,7 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
                 title=title,
                 abstract=abstract,
                 pdate=sortpubdate,
-                dois=[doi] if doi else None,
+                dois=[doi.lower()] if doi else None,
                 pmcids=[pmc] if pmc else None,
                 refs=[
                     Pub(pmids=[ref_element.text])
@@ -168,17 +168,33 @@ def pubmed_query(query: str, retmax: int) -> list[Pub]:
     return [pubs[pmid] for pmid in pmids]
 
 
-def search_dois(dois: set[str]) -> dict[str, Pub]:
+def search_dois(dois: list[str]) -> dict[str, str]:
+    doi2pmid: dict[str, str] = {}
+
+    for i in range(0, len(dois), 100):
+        batch_dois = dois[i : i + 100]
+        dyndb_response = dynamodb.batch_get_item(
+            RequestItems={
+                os.environ["DOI2PMID_TABLE_NAME"]: {
+                    "Keys": [{"doi": doi} for doi in batch_dois]
+                }
+            }
+        )
+        for resp in dyndb_response.get("Responses", {}).get(
+            os.environ["DOI2PMID_TABLE_NAME"], []
+        ):
+            doi2pmid[str(resp["doi"]).lower()] = str(resp["pmid"])
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&term="
-    doi2pub: dict[str, Pub] = {}
     dois_temp: set[str] = set()
-    for i in range(len(dois)):
-        doi = dois.pop()
+    unknown_dois = set(dois) - set(doi2pmid.keys())
+    for i, doi in enumerate(unknown_dois):
         if (
-            i == len(dois) - 1
+            i == len(unknown_dois) - 1
             or len(base_url + "+OR+".join([f"{d}[aid]" for d in dois_temp | {doi}]))
             > 2000
         ):
+            if i == len(unknown_dois) - 1:
+                dois_temp.add(doi)
             url = base_url + "+OR+".join([f"{d}[aid]" for d in dois_temp])
             logger.info("search_dois_url length: %s, %s", len(url), url)
             pubmed_response = http.request(
@@ -188,9 +204,16 @@ def search_dois(dois: set[str]) -> dict[str, Pub]:
             decoded_response = pubmed_response.data.decode("utf-8")
             data = json.loads(decoded_response)
             pmids = data.get("esearchresult", {}).get("idlist", [])
-            if len(pmids) > 0:
-                doi2pub |= get_dy_pmids(pmids=pmids)
+            doi2pmid |= {
+                doi: pmid
+                for pmid, pub in get_dy_pmids(pmids=pmids).items()
+                for doi in pub.dois or []
+            }
             dois_temp = {doi}
         else:
             dois_temp.add(doi)
-    return doi2pub
+
+    with dynamodb.Table(os.environ["DOI2PMID_TABLE_NAME"]).batch_writer() as batch:
+        for doi in unknown_dois:
+            batch.put_item(Item={"doi": doi.lower(), "pmid": doi2pmid.get(doi)})
+    return {doi: pmid for doi, pmid in doi2pmid.items() if pmid is not None}

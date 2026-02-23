@@ -41,7 +41,7 @@ def cr_lookup(doi) -> Pub:
         abstract=data["message"].get("abstract"),
         title=data["message"].get("title", [None])[0],
         orcs=[],
-        dois=[data["message"]["DOI"]],
+        dois=[data["message"]["DOI"].lower()],
     )
 
 
@@ -87,7 +87,7 @@ def cr_query(query: str, rows: int) -> list[Pub]:
             pdate=pdate_from_item(item),
             title=item.get("title", [None])[0],
             orcs=[],
-            dois=[item["DOI"]],
+            dois=[item["DOI"].lower()],
         )
         for item in data["message"]["items"]
     ]

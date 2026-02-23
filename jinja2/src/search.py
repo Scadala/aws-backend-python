@@ -78,8 +78,7 @@ def lambda_handler(event, context):
         doi for d in nasa_ads_data for doi in d.dois or [] if doi not in doi2pmid
     }
     logger.info("doi_no_pmid", extra={"len": len(doi_no_pmid)})
-    pmid_doi_query = search_dois(doi_no_pmid)
-    logger.info("pmid_doi_query", extra={"len": len(pmid_doi_query)})
+    doi2pmid |= search_dois(list(doi_no_pmid))
 
     return {
         "statusCode": 200,
