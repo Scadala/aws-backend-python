@@ -108,8 +108,8 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
                 title=title,
                 abstract=abstract,
                 pdate=sortpubdate,
-                dois=[doi.lower()] if doi else None,
-                pmcids=[pmc] if pmc else None,
+                dois=[doi.lower()] if doi else [],
+                pmcids=[pmc] if pmc else [],
                 refs=[
                     Pub(pmids=[ref_element.text])
                     for ref_element in refs_elements
@@ -143,25 +143,11 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
 def pubmed_query(query: str, retmax: int) -> list[Pub]:
     url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={retmax}&sort=relevance&term={query}"
     logger.info("pubmed_url length: %s, %s", len(url), url)
-    dyndb_response = dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).get_item(
-        Key={"url": url}
+    pubmed_response = http.request(
+        method="GET",
+        url=url,
     )
-    if "Item" in dyndb_response:
-        logger.info("pubmed_query cache hit", extra={"url": url})
-        decoded_response = str(dyndb_response["Item"]["response"])
-    else:
-        logger.info("pubmed_query cache miss", extra={"url": url})
-        pubmed_response = http.request(
-            method="GET",
-            url=url,
-        )
-        decoded_response = pubmed_response.data.decode("utf-8")
-        dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).put_item(
-            Item={
-                "url": url,
-                "response": decoded_response,
-            },
-        )
+    decoded_response = pubmed_response.data.decode("utf-8")
     data = json.loads(decoded_response)
     pmids = data.get("esearchresult", {}).get("idlist", [])
     pubs = get_dy_pmids(pmids=pmids)
