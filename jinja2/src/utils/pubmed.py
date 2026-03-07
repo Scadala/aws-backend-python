@@ -108,8 +108,8 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
                 title=title,
                 abstract=abstract,
                 pdate=sortpubdate,
-                dois=[doi.lower()] if doi else None,
-                pmcids=[pmc] if pmc else None,
+                dois=[doi.lower()] if doi else [],
+                pmcids=[pmc] if pmc else [],
                 refs=[
                     Pub(pmids=[ref_element.text])
                     for ref_element in refs_elements
