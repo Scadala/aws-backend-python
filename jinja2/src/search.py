@@ -57,9 +57,10 @@ def lambda_handler(event, context):
         return {"statusCode": 302, "headers": {"Location": "/"}}
     query = params["query"]
 
-    data = cr_query(query=query, rows=1000)  # 179300401
-    pubmed_data = pubmed_query(query=query, retmax=224)  # 40143958
-    nasa_ads_data = ads_query(query=query, rows=180)  # 32296235
+    cached = False
+    data = cr_query(query=query, rows=1000, cached=cached)  # 179300401
+    pubmed_data = pubmed_query(query=query, retmax=224, cached=cached)  # 40143958
+    nasa_ads_data = ads_query(query=query, rows=180, cached=cached)  # 32296235
 
     doi2pmid = {
         doi: pmid

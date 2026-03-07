@@ -22,7 +22,9 @@ nasa_ads_token = ssm_client.get_parameter(
 )["Parameter"]["Value"]
 
 
-def ads_query(query: str, rows: int = 10, detailed: bool = False) -> list[Pub]:
+def ads_query(
+    query: str, rows: int = 10, detailed: bool = False, cached: bool = True
+) -> list[Pub]:
     fl = [
         "title",
         "bibcode",
@@ -33,32 +35,40 @@ def ads_query(query: str, rows: int = 10, detailed: bool = False) -> list[Pub]:
     if detailed:
         fl += ["abstract", "author", "aff", "orcid"]
     url = f"https://api.adsabs.harvard.edu/v1/search/query?fl={','.join(fl)}&q={query}&rows={rows}"
-    dyndb_response = dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).get_item(
-        Key={"url": url}
-    )
-    if "Item" in dyndb_response:
-        logger.info("ads_query cache hit", extra={"url": url})
-        decoded_response = str(dyndb_response["Item"]["response"])
+    if cached:
+        dyndb_response = dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).get_item(
+            Key={"url": url}
+        )
+        if "Item" in dyndb_response:
+            logger.info("ads_query cache hit", extra={"url": url})
+            decoded_response = str(dyndb_response["Item"]["response"])
+        else:
+            logger.info("ads_query cache miss", extra={"url": url})
+            response = http.request(
+                method="GET",
+                url=url,
+                headers={"Authorization": f"Bearer {nasa_ads_token}"},
+            )
+            decoded_response = response.data.decode("utf-8")
+            _jresp = json.loads(decoded_response)
+            _docs = _jresp.get("response", {}).pop("docs", [])
+            logger.info("ads_query_response json", extra={"ads_query_response": _jresp})
+            logger.info(
+                "ads_query_response", extra={"size": sys.getsizeof(decoded_response)}
+            )
+            dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).put_item(
+                Item={
+                    "url": url,
+                    "response": decoded_response,
+                }
+            )
     else:
-        logger.info("ads_query cache miss", extra={"url": url})
         response = http.request(
             method="GET",
             url=url,
             headers={"Authorization": f"Bearer {nasa_ads_token}"},
         )
         decoded_response = response.data.decode("utf-8")
-        _jresp = json.loads(decoded_response)
-        _docs = _jresp.get("response", {}).pop("docs", [])
-        logger.info("ads_query_response json", extra={"ads_query_response": _jresp})
-        logger.info(
-            "ads_query_response", extra={"size": sys.getsizeof(decoded_response)}
-        )
-        dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).put_item(
-            Item={
-                "url": url,
-                "response": decoded_response,
-            }
-        )
     jresp = json.loads(decoded_response)
     logger.info("ads_query_response", extra={"ads_query_response": jresp})
     return [

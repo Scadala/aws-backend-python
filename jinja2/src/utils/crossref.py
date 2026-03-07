@@ -45,42 +45,49 @@ def cr_lookup(doi) -> Pub:
     )
 
 
-def cr_query(query: str, rows: int) -> list[Pub]:
+def cr_query(query: str, rows: int, cached: bool = True) -> list[Pub]:
     url = f"https://api.crossref.org/works?rows={rows}&query=" + query
     logger.info("cr_query", extra={"url": url})
-    dyndb_response = dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).get_item(
-        Key={"url": url}
-    )
-    if "Item" in dyndb_response:
-        logger.info("cr_query cache hit", extra={"url": url})
-        decoded_response = str(dyndb_response["Item"]["response"])
+    if cached:
+        dyndb_response = dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).get_item(
+            Key={"url": url}
+        )
+        if "Item" in dyndb_response:
+            logger.info("cr_query cache hit", extra={"url": url})
+            decoded_response = str(dyndb_response["Item"]["response"])
+        else:
+            logger.info("cr_query cache miss", extra={"url": url})
+            response = http.request(
+                method="GET",
+                url=url,
+            )
+            decoded_response = response.data.decode("utf-8")
+            items = json.loads(decoded_response)["message"]["items"]
+            dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).put_item(
+                Item={
+                    "url": url,
+                    "response": json.dumps(
+                        {
+                            "message": {
+                                "items": [
+                                    {
+                                        k: v
+                                        for k, v in item.items()
+                                        if k in pdatetags + ["title", "DOI"]
+                                    }
+                                    for item in items
+                                ]
+                            }
+                        }
+                    ),
+                },
+            )
     else:
-        logger.info("cr_query cache miss", extra={"url": url})
         response = http.request(
             method="GET",
             url=url,
         )
         decoded_response = response.data.decode("utf-8")
-        items = json.loads(decoded_response)["message"]["items"]
-        dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).put_item(
-            Item={
-                "url": url,
-                "response": json.dumps(
-                    {
-                        "message": {
-                            "items": [
-                                {
-                                    k: v
-                                    for k, v in item.items()
-                                    if k in pdatetags + ["title", "DOI"]
-                                }
-                                for item in items
-                            ]
-                        }
-                    }
-                ),
-            },
-        )
     data = json.loads(decoded_response)
     return [
         Pub(
