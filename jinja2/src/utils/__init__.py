@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -12,13 +12,13 @@ class Pub:
     pdate: str | None = None
     abstract: str | None = None
     title: str | None = None
-    orcs: list[Orc] | None = None
-    dois: list[str] | None = None
-    pmcids: list[str] | None = None
-    pmids: list[str] | None = None
-    bibcodes: list[str] | None = None
-    refs: list["Pub"] | None = None
-    cits: list["Pub"] | None = None
+    orcs: list[Orc] = field(default_factory=list)
+    dois: list[str] = field(default_factory=list)
+    pmcids: list[str] = field(default_factory=list)
+    pmids: list[str] = field(default_factory=list)
+    bibcodes: list[str] = field(default_factory=list)
+    refs: list["Pub"] = field(default_factory=list)
+    cits: list["Pub"] = field(default_factory=list)
 
 
 def order_pubs(
