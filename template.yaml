@@ -23,6 +23,7 @@ Globals:
         PMID_TABLE_NAME: !Ref PmidTablev3
         SEARCH_CACHE_TABLE_NAME: !Ref SearchCache
         DOI2PMID_TABLE_NAME: !Ref Doi2Pmid
+        DOI2ADS_TABLE_NAME: !Ref Doi2Ads
 
 Resources:
   PmidTablev3:
@@ -48,6 +49,16 @@ Resources:
         - AttributeName: url
           KeyType: HASH
   Doi2Pmid:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: doi
+          AttributeType: S
+      KeySchema:
+        - AttributeName: doi
+          KeyType: HASH
+  Doi2Ads:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
@@ -86,6 +97,8 @@ Resources:
             TableName: !Ref SearchCache
         - DynamoDBCrudPolicy:
             TableName: !Ref Doi2Pmid
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Doi2Ads
         - Statement:
             - Effect: Allow
               Action:
@@ -107,6 +120,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev3
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Doi2Ads
         - Statement:
             - Effect: Allow
               Action:

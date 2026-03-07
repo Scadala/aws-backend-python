@@ -71,3 +71,69 @@ def ads_query(query: str, rows: int = 10, detailed: bool = False) -> list[Pub]:
         )
         for p in jresp.get("response", {}).get("docs", [])
     ]
+
+
+def search_ads_dois(dois: list[str]) -> dict[str, str]:
+    doi2ads: dict[str, str] = {}
+    if not dois:
+        return doi2ads
+
+    for i in range(0, len(dois), 100):
+        batch_dois = dois[i : i + 100]
+        dyndb_response = dynamodb.batch_get_item(
+            RequestItems={
+                os.environ["DOI2ADS_TABLE_NAME"]: {
+                    "Keys": [{"doi": doi} for doi in batch_dois]
+                }
+            }
+        )
+        for resp in dyndb_response.get("Responses", {}).get(
+            os.environ["DOI2ADS_TABLE_NAME"], []
+        ):
+            doi2ads[str(resp["doi"]).lower()] = str(resp["bibcode"])
+    base_url = (
+        "https://api.adsabs.harvard.edu/v1/search/query"
+        "?fl=bibcode,doi,alternate_bibcode"
+        "&rows=2000"
+        "&q="
+    )
+    dois_temp: set[str] = set()
+    unknown_dois = set(dois) - set(doi2ads.keys())
+    for i, doi in enumerate(unknown_dois):
+        if (
+            i == len(unknown_dois) - 1
+            or len(base_url + " OR ".join([f"doi:{d}" for d in dois_temp | {doi}]))
+            > 12000
+            or len(dois_temp) >= 2000
+        ):
+            if i == len(unknown_dois) - 1:
+                dois_temp.add(doi)
+            url = base_url + " OR ".join([f"doi:{d}" for d in dois_temp])
+            logger.info("search_dois_url length: %s, %s", len(url), url)
+            pubmed_response = http.request(
+                method="GET",
+                url=url,
+                headers={"Authorization": f"Bearer {nasa_ads_token}"},
+            )
+            decoded_response = pubmed_response.data.decode("utf-8")
+            data = json.loads(decoded_response)
+            docs = data.get("response", {}).get("docs", [])
+            doi2ads |= {
+                doi: bibcode
+                for doc in docs
+                for doi in doc.get("doi", [])
+                for bibcode in [doc.get("bibcode")] + doc.get("alternate_bibcode", [])
+            }
+            dois_temp = {doi}
+        else:
+            dois_temp.add(doi)
+    if False:
+        with dynamodb.Table(os.environ["DOI2ADS_TABLE_NAME"]).batch_writer() as batch:
+            for doi in unknown_dois | set(doi2ads.keys()) - set(dois):
+                batch.put_item(Item={"doi": doi.lower(), "ads": doi2ads.get(doi)})
+    logger.info("search_ads_dois", extra={"doi2ads": doi2ads})
+    logger.info(
+        "doi_no_ads_found",
+        extra={"doi_no_ads_found": len(set(dois) - set(doi2ads.keys()))},
+    )
+    return {doi: ads for doi, ads in doi2ads.items() if ads is not None}

@@ -214,6 +214,11 @@ def search_dois(dois: list[str]) -> dict[str, str]:
             dois_temp.add(doi)
 
     with dynamodb.Table(os.environ["DOI2PMID_TABLE_NAME"]).batch_writer() as batch:
-        for doi in unknown_dois:
+        for doi in unknown_dois | set(doi2pmid.keys()) - set(dois):
             batch.put_item(Item={"doi": doi.lower(), "pmid": doi2pmid.get(doi)})
+    logger.info("search_dois", extra={"doi2pmid": doi2pmid})
+    logger.info(
+        "doi_no_pmid_found",
+        extra={"doi_no_pmid_found": len(set(dois) - set(doi2pmid.keys()))},
+    )
     return {doi: pmid for doi, pmid in doi2pmid.items() if pmid is not None}
