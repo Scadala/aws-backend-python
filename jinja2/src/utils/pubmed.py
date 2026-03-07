@@ -140,35 +140,14 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
     return dy_pmids
 
 
-def pubmed_query(query: str, retmax: int, cached: bool = True) -> list[Pub]:
+def pubmed_query(query: str, retmax: int) -> list[Pub]:
     url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={retmax}&sort=relevance&term={query}"
     logger.info("pubmed_url length: %s, %s", len(url), url)
-    if cached:
-        dyndb_response = dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).get_item(
-            Key={"url": url}
-        )
-        if "Item" in dyndb_response:
-            logger.info("pubmed_query cache hit", extra={"url": url})
-            decoded_response = str(dyndb_response["Item"]["response"])
-        else:
-            logger.info("pubmed_query cache miss", extra={"url": url})
-            pubmed_response = http.request(
-                method="GET",
-                url=url,
-            )
-            decoded_response = pubmed_response.data.decode("utf-8")
-            dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).put_item(
-                Item={
-                    "url": url,
-                    "response": decoded_response,
-                },
-            )
-    else:
-        pubmed_response = http.request(
-            method="GET",
-            url=url,
-        )
-        decoded_response = pubmed_response.data.decode("utf-8")
+    pubmed_response = http.request(
+        method="GET",
+        url=url,
+    )
+    decoded_response = pubmed_response.data.decode("utf-8")
     data = json.loads(decoded_response)
     pmids = data.get("esearchresult", {}).get("idlist", [])
     pubs = get_dy_pmids(pmids=pmids)
