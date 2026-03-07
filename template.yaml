@@ -20,13 +20,13 @@ Globals:
       SystemLogLevel: INFO
     Environment:
       Variables:
-        PMID_TABLE_NAME: !Ref PmidTablev3
+        PMID_TABLE_NAME: !Ref PmidTablev4
         SEARCH_CACHE_TABLE_NAME: !Ref SearchCache
         DOI2PMID_TABLE_NAME: !Ref Doi2Pmid
         DOI2ADS_TABLE_NAME: !Ref Doi2Ads
 
 Resources:
-  PmidTablev3:
+  PmidTablev4:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
@@ -92,7 +92,7 @@ Resources:
       MemorySize: 1769 # MB (128–10240)
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref PmidTablev3
+            TableName: !Ref PmidTablev4
         - DynamoDBCrudPolicy:
             TableName: !Ref SearchCache
         - DynamoDBCrudPolicy:
@@ -119,7 +119,7 @@ Resources:
         - x86_64
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref PmidTablev3
+            TableName: !Ref PmidTablev4
         - DynamoDBCrudPolicy:
             TableName: !Ref Doi2Ads
         - Statement:
@@ -148,7 +148,7 @@ Resources:
             Method: get
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref PmidTablev3
+            TableName: !Ref PmidTablev4
         - Statement:
             - Effect: Allow
               Action:
@@ -163,7 +163,7 @@ Resources:
         - x86_64
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref PmidTablev3
+            TableName: !Ref PmidTablev4
         - Statement:
             - Effect: Allow
               Action:
@@ -237,7 +237,7 @@ Resources:
         DynamoDBStream:
           Type: DynamoDB
           Properties:
-            Stream: !GetAtt PmidTablev3.StreamArn
+            Stream: !GetAtt PmidTablev4.StreamArn
             StartingPosition: TRIM_HORIZON
             BatchSize: 100
             Enabled: true
