@@ -3,6 +3,7 @@ import os
 import simplejson as json
 from xml.etree import ElementTree
 import logging
+from dataclasses import asdict
 
 import boto3
 import urllib3
@@ -15,29 +16,40 @@ logger = logging.getLogger(__name__)
 
 
 def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
-    dyndb_response = dynamodb.batch_get_item(
-        RequestItems={
-            os.environ["PMID_TABLE_NAME"]: {"Keys": [{"pmid": pmid} for pmid in pmids]}
-        }
-    )
-    dy_list = dyndb_response.get("Responses", {}).get(os.environ["PMID_TABLE_NAME"], [])
-    # return {d["uid"]: d for d in json.loads(json.dumps(dy_list, use_decimal=True))}
-
-    dy_pmids = {
-        d["pmid"]: Pub(**d) for d in json.loads(json.dumps(dy_list, use_decimal=True))
+    if len(pmids) == 0:
+        return {}
+    dy_pmids: dict[str, Pub] = {}
+    dy_list = []
+    for i in range(0, len(pmids), 100):
+        batch_pmids = pmids[i : i + 100]
+        dyndb_response = dynamodb.batch_get_item(
+            RequestItems={
+                os.environ["PMID_TABLE_NAME"]: {
+                    "Keys": [{"pmid": pmid} for pmid in batch_pmids]
+                }
+            }
+        )
+        dy_list.extend(
+            dyndb_response.get("Responses", {}).get(os.environ["PMID_TABLE_NAME"], [])
+        )
+    dy_pmids |= {
+        d.pop("pmid"): Pub(**d)
+        for d in json.loads(json.dumps(dy_list, use_decimal=True))
     }
-    logger.info("dy_pmids", extra={"dy_pmids": dy_pmids})
 
     pmids_not_in = set(pmids) - dy_pmids.keys()
     logger.info("pmids_not_in", extra={"pmids_not_in": list(pmids_not_in)})
 
-    if len(pmids_not_in) > 0:
+    for i in range(0, len(pmids_not_in), 100):
+        batch_pmids_not_in = list(pmids_not_in)[i : i + 100]
+        url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id={','.join(batch_pmids_not_in)}"
+        logger.info("pubmed_summary_url length: %s, %s", len(url), url)
         pubmed_summary_response = http.request(
-            method="GET",
-            url="https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id="
-            + ",".join([str(pmid) for pmid in pmids_not_in]),
+            method="POST",
+            url=url,
         )
         pubmed_summary_data = ElementTree.fromstring(pubmed_summary_response.data)
+        dy_batch = {}
         for pubmed_article in pubmed_summary_data.findall(".//PubmedArticle"):
             pmid_element = pubmed_article.find(".//MedlineCitation/PMID")
             assert pmid_element is not None
@@ -91,12 +103,12 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
                 ".//PubmedData/ReferenceList/Reference/ArticleIdList/ArticleId[@IdType='pubmed']"
             )
 
-            dy_pmids[pmid] = Pub(
+            dy_batch[pmid] = Pub(
                 pmids=[pmid],
                 title=title,
                 abstract=abstract,
                 pdate=sortpubdate,
-                dois=[doi] if doi else None,
+                dois=[doi.lower()] if doi else None,
                 pmcids=[pmc] if pmc else None,
                 refs=[
                     Pub(pmids=[ref_element.text])
@@ -104,18 +116,119 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
                     if ref_element.text is not None
                 ],
             )
+        with dynamodb.Table(os.environ["PMID_TABLE_NAME"]).batch_writer() as batch:
+            for pmid, pub in dy_batch.items():
+                batch.put_item(Item={"pmid": pmid, **asdict(pub)})
+
+    dy_list = []
+    for i in range(0, len(pmids_not_in), 100):
+        batch_pmids = [pmids_not_in.pop() for _ in range(min(100, len(pmids_not_in)))]
+        dyndb_response = dynamodb.batch_get_item(
+            RequestItems={
+                os.environ["PMID_TABLE_NAME"]: {
+                    "Keys": [{"pmid": pmid} for pmid in batch_pmids]
+                }
+            }
+        )
+        dy_list.extend(
+            dyndb_response.get("Responses", {}).get(os.environ["PMID_TABLE_NAME"], [])
+        )
+    dy_pmids |= {
+        d.pop("pmid"): Pub(**d)
+        for d in json.loads(json.dumps(dy_list, use_decimal=True))
+    }
     return dy_pmids
 
 
 def pubmed_query(query: str, retmax: int) -> list[Pub]:
     url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax={retmax}&sort=relevance&term={query}"
     logger.info("pubmed_url length: %s, %s", len(url), url)
-    pubmed_response = http.request(
-        method="GET",
-        url=url,
+    dyndb_response = dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).get_item(
+        Key={"url": url}
     )
-    data = json.loads(pubmed_response.data.decode("utf-8"))
-    logger.info("pubmed_response", extra={"pubmed_response": data})
+    if "Item" in dyndb_response:
+        logger.info("pubmed_query cache hit", extra={"url": url})
+        decoded_response = str(dyndb_response["Item"]["response"])
+    else:
+        logger.info("pubmed_query cache miss", extra={"url": url})
+        pubmed_response = http.request(
+            method="GET",
+            url=url,
+        )
+        decoded_response = pubmed_response.data.decode("utf-8")
+        dynamodb.Table(os.environ["SEARCH_CACHE_TABLE_NAME"]).put_item(
+            Item={
+                "url": url,
+                "response": decoded_response,
+            },
+        )
+    data = json.loads(decoded_response)
     pmids = data.get("esearchresult", {}).get("idlist", [])
     pubs = get_dy_pmids(pmids=pmids)
     return [pubs[pmid] for pmid in pmids]
+
+
+def search_dois(dois: list[str]) -> dict[str, str]:
+    doi2pmid: dict[str, str] = {}
+    doi_without_pmid = set()
+
+    for i in range(0, len(dois), 100):
+        batch_dois = dois[i : i + 100]
+        dyndb_response = dynamodb.batch_get_item(
+            RequestItems={
+                os.environ["DOI2PMID_TABLE_NAME"]: {
+                    "Keys": [{"doi": doi} for doi in batch_dois]
+                }
+            }
+        )
+        for resp in dyndb_response.get("Responses", {}).get(
+            os.environ["DOI2PMID_TABLE_NAME"], []
+        ):
+            if "pmid" in resp:
+                doi2pmid[str(resp["doi"])] = str(resp["pmid"])
+            else:
+                doi_without_pmid.add(str(resp["doi"]))
+    base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&term="
+    dois_temp: set[str] = set()
+    unknown_dois = set(dois) - set(doi2pmid.keys()) - doi_without_pmid
+    for i, doi in enumerate(unknown_dois):
+        if (
+            i == len(unknown_dois) - 1
+            or len(base_url + "+OR+".join([f"{d}[aid]" for d in dois_temp | {doi}]))
+            > 2000
+        ):
+            if i == len(unknown_dois) - 1:
+                dois_temp.add(doi)
+            url = base_url + "+OR+".join([f"{d}[aid]" for d in dois_temp])
+            logger.info("search_dois_url length: %s, %s", len(url), url)
+            pubmed_response = http.request(
+                method="GET",
+                url=url,
+            )
+            decoded_response = pubmed_response.data.decode("utf-8")
+            data = json.loads(decoded_response)
+            pmids = data.get("esearchresult", {}).get("idlist", [])
+            doi2pmid |= {
+                str(doi).lower(): str(pmid)
+                for pmid, pub in get_dy_pmids(pmids=pmids).items()
+                for doi in pub.dois or []
+            }
+            dois_temp = {doi}
+        else:
+            dois_temp.add(doi)
+
+    with dynamodb.Table(os.environ["DOI2PMID_TABLE_NAME"]).batch_writer() as batch:
+        for doi in unknown_dois:
+            item = {"doi": doi.lower()}
+            if doi in doi2pmid:
+                item["pmid"] = doi2pmid[doi]
+            batch.put_item(Item=item)
+    logger.info(
+        "doi_no_pmid_found",
+        extra={
+            "doi_no_pmid_found": len(
+                set(dois) & {doi for doi, pmid in doi2pmid.items() if pmid}
+            )
+        },
+    )
+    return {doi: pmid for doi, pmid in doi2pmid.items() if pmid is not None}

@@ -1,13 +1,13 @@
 import os
 import logging
 from urllib.parse import unquote_plus
-from collections import defaultdict
 
 from jinja2 import Environment, FileSystemLoader
 
 from .utils.crossref import cr_query
-from .utils.pubmed import pubmed_query
-from .utils.nasa_ads import ads_query
+from .utils.pubmed import pubmed_query, search_dois
+from .utils.nasa_ads import ads_query, search_ads_dois
+from .utils import order_pubs
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -50,38 +50,64 @@ def lambda_handler(event, context):
     }
     logger.info("session", extra={"session": session})
 
-    params = {
-        k: v
-        for k, v in (
-            item.split("=")
-            for item in event.get("rawQueryString", "query=").split("&")
-            if "=" in item
-        )
-    }
+    params = event.get("queryStringParameters", {}) or {}
     logger.info("params", extra={"params": params})
 
     if "query" not in params:
         return {"statusCode": 302, "headers": {"Location": "/"}}
     query = params["query"]
 
-    nasa_ads_data = ads_query(query=query, rows=25)
-    # logger.info("nasa_ads_data", extra={"nasa_ads_data": nasa_ads_data})
+    data = cr_query(query=query, rows=1000)  # 179300401
+    pubmed_data = pubmed_query(query=query, retmax=224)  # 40143958
+    nasa_ads_data = ads_query(query=query, rows=180)  # 32296235
 
-    data = cr_query(query=query, rows=25)
-
-    dois = {doi for pub in data for doi in pub.dois}
-    q_pubmed = query
-    if len(dois) > 0:
-        q_pubmed += "+OR+"
-        q_pubmed += "+OR+".join([f"{d}[aid]" for d in dois])
-
-    pubmed_data = pubmed_query(query=q_pubmed, retmax=25)
-
-    doi2pmids = defaultdict(set)
-    for dy_pmid in pubmed_data:
-        if dy_pmid.dois:
-            for doi in dy_pmid.dois:
-                doi2pmids[doi].add(dy_pmid.pmids[0])
+    doi2pmid = {
+        doi: pmid
+        for pm_data in pubmed_data
+        for doi in pm_data.dois or []
+        for pmid in pm_data.pmids or []
+    }
+    doi_no_pmid = {doi for d in data for doi in d.dois or [] if doi not in doi2pmid} | {
+        doi for d in nasa_ads_data for doi in d.dois or [] if doi not in doi2pmid
+    }
+    logger.info("doi_no_pmid", extra={"len": len(doi_no_pmid)})
+    assert "None" not in doi2pmid.values(), len(
+        [doi for doi, pmid in doi2pmid.items() if pmid == "None"]
+    )
+    doi2pmid |= search_dois(list(doi_no_pmid))
+    assert "None" not in doi2pmid.values(), len(
+        [doi for doi, pmid in doi2pmid.items() if pmid == "None"]
+    )
+    for d in data:
+        d.pmids += [
+            doi2pmid[doi]
+            for doi in d.dois
+            if doi in doi2pmid and doi2pmid[doi] not in d.pmids
+        ]
+    for d in nasa_ads_data:
+        d.pmids += [
+            doi2pmid[doi]
+            for doi in d.dois
+            if doi in doi2pmid and doi2pmid[doi] not in d.pmids
+        ]
+    doi2ads = {
+        doi: ads_data for ads_data in nasa_ads_data for doi in ads_data.dois or []
+    }
+    doi_no_ads = {doi for d in data for doi in d.dois or [] if doi not in doi2ads}
+    logger.info("doi_no_ads", extra={"len": len(doi_no_ads)})
+    doi2ads |= search_ads_dois(list(doi_no_ads))
+    for d in data:
+        d.bibcodes += [
+            doi2ads[doi]
+            for doi in d.dois
+            if doi in doi2ads and doi2ads[doi] not in d.bibcodes
+        ]
+    for d in pubmed_data:
+        d.bibcodes += [
+            doi2ads[doi]
+            for doi in d.dois
+            if doi in doi2ads and doi2ads[doi] not in d.bibcodes
+        ]
 
     return {
         "statusCode": 200,
@@ -90,7 +116,7 @@ def lambda_handler(event, context):
             isindex=True,
             name=session.get("name"),
             title=params.get("query"),
-            pubs=data + pubmed_data + nasa_ads_data,
+            pubs=order_pubs(data, pubmed_data, nasa_ads_data),
         ),
         "headers": {"Content-Type": "text/html"},
         "cookies": [f"{k}={v}" for k, v in session.items()],

@@ -16,7 +16,8 @@ jobs:
       pull-requests: write
     env:
       SAM_CLI_TELEMETRY: 0
-      STACK_NAME: ${{ format('{0}-pr-{1}', github.event.repository.name, github.event_name == 'push' && github.ref_name || github.event.number) }}
+      STACK_NAME: ${{ format('{0}-{1}', github.event.repository.name, github.event_name == 'push' && github.ref_name || format('pr-{0}', github.event.number)) }}
+    concurrency: ${{ format('{0}-{1}', github.event.repository.name, github.event_name == 'push' && github.ref_name || format('pr-{0}', github.event.number)) }}
     steps:
       - uses: actions/checkout@v6.0.1
       - uses: actions/setup-python@v6.1.0
