@@ -115,7 +115,7 @@ def search_ads_dois(dois: list[str]) -> dict[str, str]:
                     ]
                 )
             )
-            > 12000
+            > 3000
             or len(dois_temp) >= 2000
         ):
             if i == len(unknown_dois) - 1:
