@@ -170,6 +170,7 @@ def pubmed_query(query: str, retmax: int) -> list[Pub]:
 
 def search_dois(dois: list[str]) -> dict[str, str]:
     doi2pmid: dict[str, str] = {}
+    doi_without_pmid = set()
 
     for i in range(0, len(dois), 100):
         batch_dois = dois[i : i + 100]
@@ -183,10 +184,13 @@ def search_dois(dois: list[str]) -> dict[str, str]:
         for resp in dyndb_response.get("Responses", {}).get(
             os.environ["DOI2PMID_TABLE_NAME"], []
         ):
-            doi2pmid[str(resp["doi"]).lower()] = str(resp["pmid"])
+            if "pmid" in resp:
+                doi2pmid[str(resp["doi"])] = str(resp["pmid"])
+            else:
+                doi_without_pmid.add(str(resp["doi"]))
     base_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&term="
     dois_temp: set[str] = set()
-    unknown_dois = set(dois) - set(doi2pmid.keys())
+    unknown_dois = set(dois) - set(doi2pmid.keys()) - doi_without_pmid
     for i, doi in enumerate(unknown_dois):
         if (
             i == len(unknown_dois) - 1
@@ -205,7 +209,7 @@ def search_dois(dois: list[str]) -> dict[str, str]:
             data = json.loads(decoded_response)
             pmids = data.get("esearchresult", {}).get("idlist", [])
             doi2pmid |= {
-                doi: pmid
+                str(doi).lower(): str(pmid)
                 for pmid, pub in get_dy_pmids(pmids=pmids).items()
                 for doi in pub.dois or []
             }
@@ -214,11 +218,17 @@ def search_dois(dois: list[str]) -> dict[str, str]:
             dois_temp.add(doi)
 
     with dynamodb.Table(os.environ["DOI2PMID_TABLE_NAME"]).batch_writer() as batch:
-        for doi in unknown_dois | set(doi2pmid.keys()) - set(dois):
-            batch.put_item(Item={"doi": doi.lower(), "pmid": doi2pmid.get(doi)})
-    logger.info("search_dois", extra={"doi2pmid": doi2pmid})
+        for doi in unknown_dois:
+            item = {"doi": doi.lower()}
+            if doi in doi2pmid:
+                item["pmid"] = doi2pmid[doi]
+            batch.put_item(Item=item)
     logger.info(
         "doi_no_pmid_found",
-        extra={"doi_no_pmid_found": len(set(dois) - set(doi2pmid.keys()))},
+        extra={
+            "doi_no_pmid_found": len(
+                set(dois) & {doi for doi, pmid in doi2pmid.items() if pmid}
+            )
+        },
     )
     return {doi: pmid for doi, pmid in doi2pmid.items() if pmid is not None}

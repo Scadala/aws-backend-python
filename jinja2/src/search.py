@@ -71,16 +71,21 @@ def lambda_handler(event, context):
         doi for d in nasa_ads_data for doi in d.dois or [] if doi not in doi2pmid
     }
     logger.info("doi_no_pmid", extra={"len": len(doi_no_pmid)})
+    assert "None" not in doi2pmid.values(), len(
+        [doi for doi, pmid in doi2pmid.items() if pmid == "None"]
+    )
     doi2pmid |= search_dois(list(doi_no_pmid))
+    assert "None" not in doi2pmid.values(), len(
+        [doi for doi, pmid in doi2pmid.items() if pmid == "None"]
+    )
     for d in data:
-        d.pmids = [
-            doi2pmid.get(doi) for doi in d.dois or [] if doi in doi2pmid
-        ] + d.pmids or []
+        d.pmids = [doi2pmid.get(doi) for doi in (d.dois or []) if doi in doi2pmid] + (
+            d.pmids or []
+        )
     for d in nasa_ads_data:
-        d.pmids = [
-            doi2pmid.get(doi) for doi in d.dois or [] if doi in doi2pmid
-        ] + d.pmids or []
-
+        d.pmids = [doi2pmid.get(doi) for doi in (d.dois or []) if doi in doi2pmid] + (
+            d.pmids or []
+        )
     doi2ads = {
         doi: ads_data for ads_data in nasa_ads_data for doi in ads_data.dois or []
     }
@@ -88,13 +93,13 @@ def lambda_handler(event, context):
     logger.info("doi_no_ads", extra={"len": len(doi_no_ads)})
     doi2ads |= search_ads_dois(list(doi_no_ads))
     for d in data:
-        d.ads_data = [
-            doi2ads.get(doi) for doi in d.dois or [] if doi in doi2ads
-        ] + d.ads_data or []
+        d.bibcodes = [doi2ads.get(doi) for doi in (d.dois or []) if doi in doi2ads] + (
+            d.bibcodes or []
+        )
     for d in pubmed_data:
-        d.ads_data = [
-            doi2ads.get(doi) for doi in d.dois or [] if doi in doi2ads
-        ] + d.ads_data or []
+        d.bibcodes = [doi2ads.get(doi) for doi in (d.dois or []) if doi in doi2ads] + (
+            d.bibcodes or []
+        )
 
     return {
         "statusCode": 200,
