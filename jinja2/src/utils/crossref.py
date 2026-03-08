@@ -1,11 +1,12 @@
-import os
-import boto3
-from . import Pub
-
 import logging
-import simplejson as json
+import os
 from datetime import date
+
+import boto3
+import simplejson as json
 import urllib3
+
+from . import Pub
 
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
@@ -45,21 +46,10 @@ def cr_lookup(doi) -> Pub:
     )
 
 
-def cr_query(query: str, rows: int, cached: bool = True) -> list[Pub]:
-    url = f"https://api.crossref.org/works?rows={rows}&query=" + query
-    logger.info("cr_query", extra={"url": url})
-    response = http.request(
-        method="GET",
-        url=url,
+def item_to_pub(item) -> Pub:
+    return Pub(
+        pdate=pdate_from_item(item),
+        title=item.get("title", [None])[0],
+        orcs=[],
+        dois=[item["DOI"].lower()],
     )
-    decoded_response = response.data.decode("utf-8")
-    data = json.loads(decoded_response)
-    return [
-        Pub(
-            pdate=pdate_from_item(item),
-            title=item.get("title", [None])[0],
-            orcs=[],
-            dois=[item["DOI"].lower()],
-        )
-        for item in data["message"]["items"]
-    ]

@@ -1,11 +1,12 @@
+import logging
 import os
 import sys
+
 import boto3
+import simplejson as json
+import urllib3
 
 from . import Pub
-import simplejson as json
-import logging
-import urllib3
 
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
@@ -53,6 +54,16 @@ def ads_query(
         )
         for p in jresp.get("response", {}).get("docs", [])
     ]
+
+
+def doc_to_pub(doc) -> Pub:
+    return Pub(
+        title=doc.get("title", [None])[0],
+        pdate=doc.get("pubdate"),
+        bibcodes=[doc.get("bibcode")] + doc.get("alternate_bibcode", []),
+        abstract=doc.get("abstract"),
+        dois=[doi.lower() for doi in doc.get("doi", [])],
+    )
 
 
 def search_ads_dois(dois: list[str]) -> dict[str, str]:

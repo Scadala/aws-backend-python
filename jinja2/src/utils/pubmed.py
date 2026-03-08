@@ -1,12 +1,13 @@
-from . import Pub
-import os
-import simplejson as json
-from xml.etree import ElementTree
 import logging
+import os
 from dataclasses import asdict
+from xml.etree import ElementTree
 
 import boto3
+import simplejson as json
 import urllib3
+
+from . import Pub
 
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
@@ -15,10 +16,9 @@ dynamodb = boto3.resource("dynamodb")
 logger = logging.getLogger(__name__)
 
 
-def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
+def batch_id_to_known_pub(pmids: list[str]) -> dict[str, Pub]:
     if len(pmids) == 0:
         return {}
-    dy_pmids: dict[str, Pub] = {}
     dy_list = []
     for i in range(0, len(pmids), 100):
         batch_pmids = pmids[i : i + 100]
@@ -32,16 +32,15 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
         dy_list.extend(
             dyndb_response.get("Responses", {}).get(os.environ["PMID_TABLE_NAME"], [])
         )
-    dy_pmids |= {
+    return {
         d.pop("pmid"): Pub(**d)
         for d in json.loads(json.dumps(dy_list, use_decimal=True))
     }
 
-    pmids_not_in = set(pmids) - dy_pmids.keys()
-    logger.info("pmids_not_in", extra={"pmids_not_in": list(pmids_not_in)})
 
-    for i in range(0, len(pmids_not_in), 100):
-        batch_pmids_not_in = list(pmids_not_in)[i : i + 100]
+def batch_id_lookup(pmids: list[str]) -> None:
+    for i in range(0, len(pmids), 100):
+        batch_pmids_not_in = list(pmids)[i : i + 100]
         url = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id={','.join(batch_pmids_not_in)}"
         logger.info("pubmed_summary_url length: %s, %s", len(url), url)
         pubmed_summary_response = http.request(
@@ -119,25 +118,6 @@ def get_dy_pmids(pmids: list[str]) -> dict[str, Pub]:
         with dynamodb.Table(os.environ["PMID_TABLE_NAME"]).batch_writer() as batch:
             for pmid, pub in dy_batch.items():
                 batch.put_item(Item={"pmid": pmid, **asdict(pub)})
-
-    dy_list = []
-    for i in range(0, len(pmids_not_in), 100):
-        batch_pmids = [pmids_not_in.pop() for _ in range(min(100, len(pmids_not_in)))]
-        dyndb_response = dynamodb.batch_get_item(
-            RequestItems={
-                os.environ["PMID_TABLE_NAME"]: {
-                    "Keys": [{"pmid": pmid} for pmid in batch_pmids]
-                }
-            }
-        )
-        dy_list.extend(
-            dyndb_response.get("Responses", {}).get(os.environ["PMID_TABLE_NAME"], [])
-        )
-    dy_pmids |= {
-        d.pop("pmid"): Pub(**d)
-        for d in json.loads(json.dumps(dy_list, use_decimal=True))
-    }
-    return dy_pmids
 
 
 def pubmed_query(query: str, retmax: int) -> list[Pub]:
