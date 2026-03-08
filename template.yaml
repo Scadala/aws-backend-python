@@ -31,7 +31,7 @@ Globals:
 Resources:
   PmidLookupQueue:
     Type: AWS::SQS::Queue
-  PmidLookupQueue:
+  PmidDoiLookupQueue:
     Type: AWS::SQS::Queue
   AdsDoiLookupQueue:
     Type: AWS::SQS::Queue
