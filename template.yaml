@@ -115,7 +115,7 @@ Resources:
         - SQSSendMessagePolicy:
             QueueName: !GetAtt AdsDoiLookupQueue.QueueName
         - SSMParameterReadPolicy:
-            ParameterName: /api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
+            ParameterName: api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
         E1:
           Type: HttpApi
@@ -135,7 +135,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref Doi2Ads
         - SSMParameterReadPolicy:
-            ParameterName: /api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
+            ParameterName: api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
         E1:
           Type: HttpApi
@@ -159,7 +159,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev4
         - SSMParameterReadPolicy:
-            ParameterName: /api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
+            ParameterName: api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
   BibCodeFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -171,7 +171,7 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev4
         - SSMParameterReadPolicy:
-            ParameterName: /api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
+            ParameterName: api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
         E1:
           Type: HttpApi
@@ -187,7 +187,7 @@ Resources:
         - x86_64
       Policies:
         - SSMParameterReadPolicy:
-            ParameterName: /oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
+            ParameterName: oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
       Events:
         Auth:
           Type: HttpApi
@@ -204,7 +204,7 @@ Resources:
         - x86_64
       Policies:
         - SSMParameterReadPolicy:
-            ParameterName: /oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
+            ParameterName: oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
       Events:
         Callback:
           Type: HttpApi
