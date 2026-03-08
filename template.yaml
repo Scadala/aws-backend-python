@@ -109,11 +109,11 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref Doi2Ads
         - SQSSendMessagePolicy:
-            QueueName: !Ref PmidLookupQueue
+            QueueName: !GetAtt PmidLookupQueue.QueueName
         - SQSSendMessagePolicy:
-            QueueName: !Ref PmidDoiLookupQueue
+            QueueName: !GetAtt PmidDoiLookupQueue.QueueName
         - SQSSendMessagePolicy:
-            QueueName: !Ref AdsDoiLookupQueue
+            QueueName: !GetAtt AdsDoiLookupQueue.QueueName
         - Statement:
             - Effect: Allow
               Action:
