@@ -93,3 +93,17 @@ def order_pubs(
             n_inserted += 1
 
     return cr_pubs
+
+
+def simple_batches(iterable, n=10):
+    """
+    Yield successive n-sized chunks from iterable.
+    """
+    batch = []
+    for i, entry in enumerate(iterable):
+        batch.append({"Id": str(i), "MessageBody": entry})
+        if len(batch) == n:
+            yield batch
+            batch = []
+    if batch:
+        yield batch

@@ -6,7 +6,7 @@ import boto3
 import simplejson as json
 import urllib3
 
-from . import Pub
+from . import Pub, simple_batches
 
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
@@ -88,11 +88,10 @@ def batch_doi_to_known_ads(dois: list[str]) -> dict[str, str]:
             if "bibcode" in resp:
                 doi2bibcode[str(resp["doi"])] = str(resp["bibcode"])
             doi_without_bibcode.discard(str(resp["doi"]))
-    sqs_entries = [{"Id": doi, "MessageBody": doi} for doi in doi_without_bibcode]
-    for i in range(0, len(sqs_entries), 10):
+    for entries in simple_batches(doi_without_bibcode):
         sqs_client.send_message_batch(
             QueueUrl=os.environ["ADS_DOI_LOOKUP_QUEUE_URL"],
-            Entries=sqs_entries[i : i + 10],
+            Entries=entries,
         )
     return doi2bibcode
 

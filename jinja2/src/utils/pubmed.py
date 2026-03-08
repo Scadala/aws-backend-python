@@ -7,7 +7,7 @@ import boto3
 import simplejson as json
 import urllib3
 
-from . import Pub
+from . import Pub, simple_batches
 
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
@@ -139,11 +139,10 @@ def batch_doi_to_known_pmid(dois: list[str]) -> dict[str, str]:
             if "pmid" in resp:
                 doi2pmid[str(resp["doi"])] = str(resp["pmid"])
             unknown_dois.discard(str(resp["doi"]))
-    sqs_entries = [{"Id": doi, "MessageBody": doi} for doi in unknown_dois]
-    for i in range(0, len(sqs_entries), 10):
+    for entries in simple_batches(unknown_dois):
         sqs_client.send_message_batch(
             QueueUrl=os.environ["PMID_DOI_LOOKUP_QUEUE_URL"],
-            Entries=sqs_entries[i : i + 10],
+            Entries=entries,
         )
     return doi2pmid
 

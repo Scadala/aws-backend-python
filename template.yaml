@@ -114,11 +114,8 @@ Resources:
             QueueName: !GetAtt PmidDoiLookupQueue.QueueName
         - SQSSendMessagePolicy:
             QueueName: !GetAtt AdsDoiLookupQueue.QueueName
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
+        - SSMParameterReadPolicy:
+            ParameterName: /api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
         E1:
           Type: HttpApi
@@ -137,11 +134,8 @@ Resources:
             TableName: !Ref PmidTablev4
         - DynamoDBCrudPolicy:
             TableName: !Ref Doi2Ads
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
+        - SSMParameterReadPolicy:
+            ParameterName: /api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
         E1:
           Type: HttpApi
@@ -164,11 +158,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev4
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
+        - SSMParameterReadPolicy:
+            ParameterName: /api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
   BibCodeFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -179,11 +170,8 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref PmidTablev4
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
+        - SSMParameterReadPolicy:
+            ParameterName: /api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com
       Events:
         E1:
           Type: HttpApi
@@ -198,11 +186,8 @@ Resources:
       Architectures:
         - x86_64
       Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
+        - SSMParameterReadPolicy:
+            ParameterName: /oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
       Events:
         Auth:
           Type: HttpApi
@@ -218,11 +203,8 @@ Resources:
       Architectures:
         - x86_64
       Policies:
-        - Statement:
-            - Effect: Allow
-              Action:
-                - ssm:GetParameter
-              Resource: arn:aws:ssm:eu-central-1:796401245269:parameter/oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
+        - SSMParameterReadPolicy:
+            ParameterName: /oauth2/orcid.org/0000-0003-2213-3552/APP-6KSLC9TDGOYVUOTT
       Events:
         Callback:
           Type: HttpApi
