@@ -1,13 +1,14 @@
-import os
+import asyncio
 import logging
+import os
 from urllib.parse import unquote_plus
+
+import aiohttp
+import boto3
 
 from jinja2 import Environment, FileSystemLoader
 
-from .utils.crossref import cr_query
-from .utils.pubmed import pubmed_query, search_dois
-from .utils.nasa_ads import ads_query, search_ads_dois
-from .utils import order_pubs
+from .utils import crossref, nasa_ads, order_pubs, pubmed
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -19,6 +20,26 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
 index_template = jinja_env.get_template("query.html")
+
+
+sqs_client = boto3.client("sqs", region_name="eu-central-1")
+ssm_client = boto3.client("ssm", region_name="eu-central-1")
+nasa_ads_token = ssm_client.get_parameter(
+    Name="arn:aws:ssm:eu-central-1:796401245269:parameter"
+    + "/api-token/api.adsabs.harvard.edu/georgwendorf_gmail.com",
+    WithDecryption=True,
+)["Parameter"]["Value"]
+
+
+async def fetch(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(**url) as resp:
+            return await resp.json()
+
+
+async def fetch_all(urls):
+    tasks = [fetch(url) for url in urls]
+    return await asyncio.gather(*tasks)
 
 
 def lambda_handler(event, context):
@@ -56,10 +77,50 @@ def lambda_handler(event, context):
     if "query" not in params:
         return {"statusCode": 302, "headers": {"Location": "/"}}
     query = params["query"]
+    urls = [
+        {
+            "url": "https://api.crossref.org/works?rows=1000&query="
+            + query,  # 179300401
+            "headers": {"User-Agent": "georgwendorf@gmail.com"},
+        },
+        {
+            "url": f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=224&sort=relevance&term={query}",  # 40143958
+            "headers": {"User-Agent": "georgwendorf@gmail.com"},
+        },
+        {
+            "url": f"https://api.adsabs.harvard.edu/v1/search/query?fl=title,bibcode,doi,pubdate,alternate_bibcode&q={query}&rows=180",  # 32296235
+            "headers": {
+                "User-Agent": "georgwendorf@gmail.com",
+                "Authorization": f"Bearer {nasa_ads_token}",
+            },
+        },
+    ]
+    responses = asyncio.run(fetch_all(urls=urls))
+    logger.info(
+        "response lengths",
+        extra={
+            "api.crossref.org": len(responses[0]["message"]["items"]),
+            "eutils.ncbi.nlm.nih.gov": len(responses[1]["esearchresult"]["idlist"]),
+            "api.adsabs.harvard.edu": len(responses[2]["response"]["docs"]),
+        },
+    )
 
-    data = cr_query(query=query, rows=1000)  # 179300401
-    pubmed_data = pubmed_query(query=query, retmax=224)  # 40143958
-    nasa_ads_data = ads_query(query=query, rows=180)  # 32296235
+    data = [
+        crossref.item_to_pub(item=item) for item in responses[0]["message"]["items"]
+    ]
+    known_pubmed = pubmed.batch_id_to_known_pub(
+        pmids=responses[1]["esearchresult"]["idlist"]
+    )
+    for pmid in responses[1]["esearchresult"]["idlist"]:
+        if pmid not in known_pubmed:
+            sqs_client.send_message(
+                QueueUrl=os.environ["PMID_LOOKUP_QUEUE_URL"],
+                MessageBody=pmid,
+            )
+    pubmed_data = list(known_pubmed.values())
+    nasa_ads_data = [
+        nasa_ads.doc_to_pub(doc) for doc in responses[2]["response"]["docs"]
+    ]
 
     doi2pmid = {
         doi: pmid
@@ -71,13 +132,7 @@ def lambda_handler(event, context):
         doi for d in nasa_ads_data for doi in d.dois or [] if doi not in doi2pmid
     }
     logger.info("doi_no_pmid", extra={"len": len(doi_no_pmid)})
-    assert "None" not in doi2pmid.values(), len(
-        [doi for doi, pmid in doi2pmid.items() if pmid == "None"]
-    )
-    doi2pmid |= search_dois(list(doi_no_pmid))
-    assert "None" not in doi2pmid.values(), len(
-        [doi for doi, pmid in doi2pmid.items() if pmid == "None"]
-    )
+    doi2pmid |= pubmed.batch_doi_to_known_pmid(list(doi_no_pmid))
     for d in data:
         d.pmids += [
             doi2pmid[doi]
@@ -91,11 +146,14 @@ def lambda_handler(event, context):
             if doi in doi2pmid and doi2pmid[doi] not in d.pmids
         ]
     doi2ads = {
-        doi: ads_data for ads_data in nasa_ads_data for doi in ads_data.dois or []
+        doi: bibcode
+        for ads_data in nasa_ads_data
+        for doi in ads_data.dois
+        for bibcode in ads_data.bibcodes
     }
     doi_no_ads = {doi for d in data for doi in d.dois or [] if doi not in doi2ads}
     logger.info("doi_no_ads", extra={"len": len(doi_no_ads)})
-    doi2ads |= search_ads_dois(list(doi_no_ads))
+    doi2ads |= nasa_ads.batch_doi_to_known_ads(list(doi_no_ads))
     for d in data:
         d.bibcodes += [
             doi2ads[doi]
@@ -108,7 +166,6 @@ def lambda_handler(event, context):
             for doi in d.dois
             if doi in doi2ads and doi2ads[doi] not in d.bibcodes
         ]
-
     return {
         "statusCode": 200,
         "isBase64Encoded": False,

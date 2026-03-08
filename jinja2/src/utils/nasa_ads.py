@@ -1,11 +1,12 @@
+import logging
 import os
 import sys
-import boto3
 
-from . import Pub
+import boto3
 import simplejson as json
-import logging
 import urllib3
+
+from . import Pub, simple_batches
 
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
@@ -13,6 +14,7 @@ http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 logger = logging.getLogger(__name__)
 
 ssm_client = boto3.client("ssm", region_name="eu-central-1")
+sqs_client = boto3.client("sqs", region_name="eu-central-1")
 
 dynamodb = boto3.resource("dynamodb")
 nasa_ads_token = ssm_client.get_parameter(
@@ -55,12 +57,22 @@ def ads_query(
     ]
 
 
-def search_ads_dois(dois: list[str]) -> dict[str, str]:
+def doc_to_pub(doc) -> Pub:
+    return Pub(
+        title=doc.get("title", [None])[0],
+        pdate=doc.get("pubdate"),
+        bibcodes=[doc.get("bibcode")] + doc.get("alternate_bibcode", []),
+        abstract=doc.get("abstract"),
+        dois=[doi.lower() for doi in doc.get("doi", [])],
+    )
+
+
+def batch_doi_to_known_ads(dois: list[str]) -> dict[str, str]:
     if not dois:
         return {}
 
     doi2bibcode: dict[str, str] = {}
-    doi_without_bibcode = set()
+    doi_without_bibcode = set(dois)
     for i in range(0, len(dois), 100):
         batch_dois = dois[i : i + 100]
         dyndb_response = dynamodb.batch_get_item(
@@ -75,16 +87,24 @@ def search_ads_dois(dois: list[str]) -> dict[str, str]:
         ):
             if "bibcode" in resp:
                 doi2bibcode[str(resp["doi"])] = str(resp["bibcode"])
-            else:
-                doi_without_bibcode.add(str(resp["doi"]))
+            doi_without_bibcode.discard(str(resp["doi"]))
+    for entries in simple_batches(doi_without_bibcode):
+        sqs_client.send_message_batch(
+            QueueUrl=os.environ["ADS_DOI_LOOKUP_QUEUE_URL"],
+            Entries=entries,
+        )
+    return doi2bibcode
+
+
+def batch_doi_lookup(unknown_dois: list[str]) -> None:
     base_url = (
         "https://api.adsabs.harvard.edu/v1/search/query"
         "?fl=bibcode,doi,alternate_bibcode"
         "&rows=2000"
         "&q="
     )
+    doi2bibcode: dict[str, str] = {}
     dois_temp: set[str] = set()
-    unknown_dois = set(dois) - set(doi2bibcode.keys()) - doi_without_bibcode
     for i, doi in enumerate(unknown_dois):
         if (
             i == len(unknown_dois) - 1
@@ -130,12 +150,3 @@ def search_ads_dois(dois: list[str]) -> dict[str, str]:
             if doi in doi2bibcode:
                 item["bibcode"] = doi2bibcode[doi]
             batch.put_item(Item=item)
-    logger.info(
-        "doi_no_ads_found",
-        extra={
-            "doi_no_ads_found": len(
-                set(dois) & {doi for doi, bibcode in doi2bibcode.items() if bibcode}
-            )
-        },
-    )
-    return {doi: ads for doi, ads in doi2bibcode.items() if ads is not None}
