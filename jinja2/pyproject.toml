@@ -3,6 +3,7 @@ name = "hello-world"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+  "aiohttp[speedups]>=3.13.3",
   "jinja2>=3.1.6",
   "lxml>=6.0.2",
 ]

@@ -1,13 +1,17 @@
-import os
+import asyncio
 import logging
+import os
+from asyncio
 from urllib.parse import unquote_plus
+
+import aiohttp
 
 from jinja2 import Environment, FileSystemLoader
 
-from .utils.crossref import cr_query
-from .utils.pubmed import pubmed_query, search_dois
-from .utils.nasa_ads import ads_query, search_ads_dois
 from .utils import order_pubs
+from .utils.crossref import cr_query
+from .utils.nasa_ads import ads_query, search_ads_dois
+from .utils.pubmed import pubmed_query, search_dois
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -19,6 +23,18 @@ jinja_env = Environment(loader=FileSystemLoader(template_dir))
 
 # Load the template once at module initialization for better performance
 index_template = jinja_env.get_template("query.html")
+
+session = aiohttp.ClientSession()
+
+
+async def fetch(url):
+    async with session.get(url) as resp:
+        return await resp.json()
+
+
+async def async_main(dois):
+    tasks = [fetch("https://api.crossref.org/works/"+doi) for doi in dois]
+    return await asyncio.gather(*tasks)
 
 
 def lambda_handler(event, context):
@@ -56,6 +72,13 @@ def lambda_handler(event, context):
     if "query" not in params:
         return {"statusCode": 302, "headers": {"Location": "/"}}
     query = params["query"]
+    dois = [
+        "10.1007/978-3-658-17671-6_18-1",
+        "10.1007/978-3-031-23161-2_300726",
+        "10.1016/b978-0-08-102696-0.00020-8",
+    ]
+    doi_response = asyncio.run(async_main(dois=dois))
+    logger.info("doi_response", extra={"doi_response": doi_response})
 
     data = cr_query(query=query, rows=1000)  # 179300401
     pubmed_data = pubmed_query(query=query, retmax=224)  # 40143958
