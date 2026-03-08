@@ -141,7 +141,7 @@ def batch_doi_to_known_pmid(dois: list[str]) -> dict[str, str]:
             unknown_dois.discard(str(resp["doi"]))
     sqs_entries = [{"Id": doi, "MessageBody": doi} for doi in unknown_dois]
     for i in range(0, len(sqs_entries), 10):
-        sqs_client.batch_send_message(
+        sqs_client.send_message_batch(
             QueueUrl=os.environ["PMID_DOI_LOOKUP_QUEUE_URL"],
             Entries=sqs_entries[i : i + 10],
         )

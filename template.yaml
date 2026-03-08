@@ -110,6 +110,10 @@ Resources:
             TableName: !Ref Doi2Ads
         - SQSSendMessagePolicy:
             QueueName: !Ref PmidLookupQueue
+        - SQSSendMessagePolicy:
+            QueueName: !Ref PmidDoiLookupQueue
+        - SQSSendMessagePolicy:
+            QueueName: !Ref AdsDoiLookupQueue
         - Statement:
             - Effect: Allow
               Action:
