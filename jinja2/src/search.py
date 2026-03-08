@@ -9,8 +9,6 @@ import boto3
 from jinja2 import Environment, FileSystemLoader
 
 from .utils import crossref, nasa_ads, order_pubs, pubmed
-from .utils.nasa_ads import search_ads_dois
-from .utils.pubmed import search_dois
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -116,7 +114,7 @@ def lambda_handler(event, context):
     for pmid in responses[1]["esearchresult"]["idlist"]:
         if pmid not in known_pubmed:
             sqs_client.send_message(
-                QueueUrl=os.environ["PMID_LOOKUP_QUEUE"],
+                QueueUrl=os.environ["PMID_LOOKUP_QUEUE_URL"],
                 MessageBody=pmid,
             )
     pubmed_data = list(known_pubmed.values())
@@ -134,13 +132,7 @@ def lambda_handler(event, context):
         doi for d in nasa_ads_data for doi in d.dois or [] if doi not in doi2pmid
     }
     logger.info("doi_no_pmid", extra={"len": len(doi_no_pmid)})
-    assert "None" not in doi2pmid.values(), len(
-        [doi for doi, pmid in doi2pmid.items() if pmid == "None"]
-    )
-    doi2pmid |= search_dois(list(doi_no_pmid))
-    assert "None" not in doi2pmid.values(), len(
-        [doi for doi, pmid in doi2pmid.items() if pmid == "None"]
-    )
+    doi2pmid |= pubmed.batch_doi_to_known_pmid(list(doi_no_pmid))
     for d in data:
         d.pmids += [
             doi2pmid[doi]
@@ -161,7 +153,7 @@ def lambda_handler(event, context):
     }
     doi_no_ads = {doi for d in data for doi in d.dois or [] if doi not in doi2ads}
     logger.info("doi_no_ads", extra={"len": len(doi_no_ads)})
-    doi2ads |= search_ads_dois(list(doi_no_ads))
+    doi2ads |= nasa_ads.batch_doi_to_known_ads(list(doi_no_ads))
     for d in data:
         d.bibcodes += [
             doi2ads[doi]

@@ -24,13 +24,17 @@ Globals:
         SEARCH_CACHE_TABLE_NAME: !Ref SearchCache
         DOI2PMID_TABLE_NAME: !Ref Doi2Pmid
         DOI2ADS_TABLE_NAME: !Ref Doi2Ads
-        PMID_LOOKUP_QUEUE: !Ref PmidLookupQueue
+        PMID_LOOKUP_QUEUE_URL: !Ref PmidLookupQueue
+        PMID_DOI_LOOKUP_QUEUE_URL: !Ref PmidDoiLookupQueue
+        ADS_DOI_LOOKUP_QUEUE_URL: !Ref AdsDoiLookupQueue
 
 Resources:
   PmidLookupQueue:
     Type: AWS::SQS::Queue
-    Properties:
-      VisibilityTimeout: 30
+  PmidLookupQueue:
+    Type: AWS::SQS::Queue
+  AdsDoiLookupQueue:
+    Type: AWS::SQS::Queue
   PmidTablev4:
     Type: AWS::DynamoDB::Table
     Properties:
