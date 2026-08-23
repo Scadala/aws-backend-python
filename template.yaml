@@ -88,6 +88,12 @@ Resources:
       KeySchema:
         - AttributeName: doi
           KeyType: HASH
+  CrossrefLastCrawl:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: CrossrefLastCrawl
+      Type: String
+      Value: ""
   IndexFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -254,6 +260,14 @@ Resources:
     Properties:
       CodeUri: nodeps/
       Handler: src.crossref.lambda_handler
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:PutParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CrossrefLastCrawl
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DoiCits
 
 Outputs:
   ApiUrl:

@@ -1,7 +1,7 @@
-import json
 import logging
 import os
 
+import simplejson as json
 import urllib3
 
 logger = logging.getLogger(__name__)
@@ -13,12 +13,27 @@ http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 def lambda_handler(event, context):
     logger.info("recieved event", extra={"event": event})
 
-    response = http.request(
+    data = http.request(
         method="GET",
         url=(
             "https://api.crossref.org/works?sort=indexed&order=desc&select=reference,DOI,indexed&rows=1000&cursor="
             + event.get("cursor", "*")
         ),
-    )
-    data = json.loads(response.data.decode("utf-8"))
+    ).json()
+    items = data["message"].pop("items")
     logger.info("cr_crawl", extra={"data": data})
+    for item in items:
+        handle_item(item)
+
+
+def handle_item(item):
+    doi = item["DOI"].lower()
+    indexed = item["indexed"]["date-time"]
+    for ref in {
+        ref["DOI"].lower() for ref in item.get("reference", []) if "DOI" in ref
+    }:
+        handle_ref(doi, ref)
+
+
+def handle_ref(doi, ref):
+    pass
