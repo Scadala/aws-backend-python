@@ -1,11 +1,11 @@
-import os
 import logging
-from jinja2 import Environment, FileSystemLoader
+import os
 from urllib.parse import unquote_plus
 
-from .utils import Pub
-from .utils.pubmed import get_dy_pmids
+from jinja2 import Environment, FileSystemLoader
 
+from .utils import Pub
+from .utils.pubmed import batch_id_to_known_pub
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ def lambda_handler(event, context):
 
     pmid = event["pathParameters"]["pmid"]
 
-    data = get_dy_pmids(pmids=[pmid])[pmid]
+    data = batch_id_to_known_pub(pmids=[pmid])[pmid]
 
     return {
         "statusCode": 200,
