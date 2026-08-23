@@ -68,7 +68,7 @@ def order_pubs(
             cr_pub.abstract = cr_pub.abstract or pm.abstract
             cr_pub.title = cr_pub.title or pm.title
             cr_pub.pdate = cr_pub.pdate or pm.pdate
-            pmid_ix -= {min(pmid_ix)}
+            pmid_ix -= {min(pmid_ix)} if pmid_ix else {}
         else:
             cr_pubs.insert(min(pmid_ix) + n_inserted if pmid_ix else len(cr_pubs), pm)
             n_inserted += 1
@@ -87,7 +87,7 @@ def order_pubs(
             cr_pub.abstract = cr_pub.abstract or ad.abstract
             cr_pub.title = cr_pub.title or ad.title
             cr_pub.pdate = cr_pub.pdate or ad.pdate
-            ads_ix -= {min(ads_ix)}
+            ads_ix -= {min(ads_ix)} if ads_ix else {}
         else:
             cr_pubs.insert(min(ads_ix) + n_inserted if ads_ix else len(cr_pubs), ad)
             n_inserted += 1
