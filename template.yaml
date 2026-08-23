@@ -93,6 +93,7 @@ Resources:
     Properties:
       Name: CrossrefLastCrawl
       Type: String
+      Value: "0"
   IndexFunction:
     Type: AWS::Serverless::Function
     Properties:
