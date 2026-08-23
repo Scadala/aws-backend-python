@@ -24,6 +24,7 @@ Globals:
         SEARCH_CACHE_TABLE_NAME: !Ref SearchCache
         DOI2PMID_TABLE_NAME: !Ref Doi2Pmid
         DOI2ADS_TABLE_NAME: !Ref Doi2Ads
+        DOI_CITS_TABLE_NAME: !Ref DoiCits
         PMID_LOOKUP_QUEUE_URL: !Ref PmidLookupQueue
         PMID_DOI_LOOKUP_QUEUE_URL: !Ref PmidDoiLookupQueue
         ADS_DOI_LOOKUP_QUEUE_URL: !Ref AdsDoiLookupQueue
@@ -58,6 +59,16 @@ Resources:
         - AttributeName: url
           KeyType: HASH
   Doi2Pmid:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: doi
+          AttributeType: S
+      KeySchema:
+        - AttributeName: doi
+          KeyType: HASH
+  DoiCits:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
@@ -238,6 +249,11 @@ Resources:
             StartingPosition: TRIM_HORIZON
             BatchSize: 100
             Enabled: true
+  DoiCitsCrawler:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: nodeps/
+      Handler: src.crossref.lambda_handler
 
 Outputs:
   ApiUrl:
