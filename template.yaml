@@ -264,8 +264,11 @@ Resources:
         Variables:
           CROSSREF_LAST_CRAWL_PARAM: !Sub "CrossrefLastCrawl-${AWS::StackName}"
       Policies:
-        - SSMParameterWritePolicy:
-            ParameterName: !Sub "CrossrefLastCrawl-${AWS::StackName}"
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:PutParameter
+              Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CrossrefLastCrawl-${AWS::StackName}"
         - DynamoDBCrudPolicy:
             TableName: !Ref DoiCits
 

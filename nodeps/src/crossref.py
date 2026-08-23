@@ -1,7 +1,7 @@
 import logging
 import os
 
-import simplejson as json
+import boto3
 import urllib3
 
 logger = logging.getLogger(__name__)
@@ -9,9 +9,18 @@ logger = logging.getLogger(__name__)
 os.environ["DOI_CITS_TABLE_NAME"]
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
+ssm_client = boto3.client("ssm", region_name="eu-central-1")
+
+CROSSREF_LAST_CRAWL_PARAM = ssm_client.get_parameter(
+    Name=os.environ["CROSSREF_LAST_CRAWL_PARAM"],
+)["Parameter"]["Value"]
+
 
 def lambda_handler(event, context):
-    logger.info("recieved event", extra={"event": event})
+    logger.info(
+        "recieved event",
+        extra={"event": event, "CROSSREF_LAST_CRAWL_PARAM": CROSSREF_LAST_CRAWL_PARAM},
+    )
 
     data = http.request(
         method="GET",
