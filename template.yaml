@@ -91,7 +91,7 @@ Resources:
   CrossrefLastCrawl:
     Type: AWS::SSM::Parameter
     Properties:
-      Name: CrossrefLastCrawl
+      Name: !Sub "CrossrefLastCrawl-${AWS::StackName}"
       Type: String
       Value: "0"
   IndexFunction:
@@ -260,12 +260,15 @@ Resources:
     Properties:
       CodeUri: nodeps/
       Handler: src.crossref.lambda_handler
+      Environment:
+        Variables:
+          CROSSREF_LAST_CRAWL_PARAM: !Sub "CrossrefLastCrawl-${AWS::StackName}"
       Policies:
         - Statement:
             - Effect: Allow
               Action:
                 - ssm:PutParameter
-              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CrossrefLastCrawl
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CrossrefLastCrawl-${AWS::StackName}
         - DynamoDBCrudPolicy:
             TableName: !Ref DoiCits
 
