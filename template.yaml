@@ -74,10 +74,9 @@ Resources:
   DoiCits:
     Type: AWS::DynamoDB::Table
     Properties:
-      BillingMode: PROVISIONED
-      ProvisionedThroughput:
-        ReadCapacityUnits: 10
-        WriteCapacityUnits: 10
+      BillingMode: PAY_PER_REQUEST
+      OnDemandThroughput:
+        MaxWriteRequestUnits: 15
       AttributeDefinitions:
         - AttributeName: doi
           AttributeType: S
