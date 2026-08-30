@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -10,7 +11,7 @@ os.environ["DOI_CITS_TABLE_NAME"]
 http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
 
 ssm_client = boto3.client("ssm", region_name="eu-central-1")
-dynamodb = boto3.resource("dynamodb")
+sqs_client = boto3.client("sqs", region_name="eu-central-1")
 
 CROSSREF_LAST_CRAWL_PARAM = ssm_client.get_parameter(
     Name=os.environ["CROSSREF_LAST_CRAWL_PARAM"],
@@ -44,31 +45,19 @@ def handle_item(item):
         {ref["DOI"].lower() for ref in item.get("reference", []) if "DOI" in ref}
     )
     logger.info("item prepared", extra={"doi": doi, "indexed": indexed, "refs": refs})
-    for i in range(0, len(refs), 100):
-        handle_batch_refs(doi, set(refs[i : i + 100]))
+    for i in range(0, len(refs), 10):
+        handle_batch_refs(doi, refs[i : i + 10])
 
 
 def handle_batch_refs(doi, refs):
-    dyndb_entries = (
-        dynamodb.batch_get_item(
-            RequestItems={
-                os.environ["DOI_CITS_TABLE_NAME"]: {
-                    "Keys": [{"doi": ref} for ref in refs]
-                }
+    response = sqs_client.send_message_batch(
+        QueueUrl=os.environ["CROSSREF_CITS_QUEUE_URL"],
+        Entries=[
+            {
+                "Id": str(i),
+                "MessageBody": json.dumps({"doi": doi, "ref": ref}),
             }
-        )
-        .get("Responses", {})
-        .get(os.environ["DOI_CITS_TABLE_NAME"], [])
+            for i, ref in enumerate(refs)
+        ],
     )
-    batch_size = 0
-    with dynamodb.Table(os.environ["DOI_CITS_TABLE_NAME"]).batch_writer() as batch:
-        for entry in dyndb_entries:
-            refs -= {entry["doi"]}
-            if doi not in entry["cits"]:
-                entry["cits"].append(doi)
-                batch.put_item(Item=entry)
-                batch_size += 1
-        for ref in refs:
-            batch.put_item(Item={"doi": ref, "cits": [doi]})
-            batch_size += 1
-    logger.info("batch written", extra={"batch_size": batch_size})
+    logger.info("batch sent", extra={"doi": doi, "refs": refs, "response": response})

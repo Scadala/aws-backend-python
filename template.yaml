@@ -28,6 +28,7 @@ Globals:
         PMID_LOOKUP_QUEUE_URL: !Ref PmidLookupQueue
         PMID_DOI_LOOKUP_QUEUE_URL: !Ref PmidDoiLookupQueue
         ADS_DOI_LOOKUP_QUEUE_URL: !Ref AdsDoiLookupQueue
+        CROSSREF_CITS_QUEUE_URL: !Ref CrossrefCitsQueue
 
 Resources:
   PmidLookupQueue:
@@ -35,6 +36,8 @@ Resources:
   PmidDoiLookupQueue:
     Type: AWS::SQS::Queue
   AdsDoiLookupQueue:
+    Type: AWS::SQS::Queue
+  CrossrefCitsQueue:
     Type: AWS::SQS::Queue
   PmidTablev4:
     Type: AWS::DynamoDB::Table
@@ -71,7 +74,10 @@ Resources:
   DoiCits:
     Type: AWS::DynamoDB::Table
     Properties:
-      BillingMode: PAY_PER_REQUEST
+      BillingMode: PROVISIONED
+      ProvisionedThroughput:
+        ReadCapacityUnits: 10
+        WriteCapacityUnits: 10
       AttributeDefinitions:
         - AttributeName: doi
           AttributeType: S
@@ -264,14 +270,31 @@ Resources:
         Variables:
           CROSSREF_LAST_CRAWL_PARAM: !Sub "CrossrefLastCrawl-${AWS::StackName}"
       Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt CrossrefCitsQueue.QueueName
         - Statement:
             - Effect: Allow
               Action:
                 - ssm:PutParameter
                 - ssm:GetParameter
               Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CrossrefLastCrawl-${AWS::StackName}"
+  DoiCitsLoader:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: nodeps/
+      Handler: src.crossref_loader.lambda_handler
+      Environment:
+        Variables:
+          CROSSREF_LAST_CRAWL_PARAM: !Sub "CrossrefLastCrawl-${AWS::StackName}"
+      Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref DoiCits
+      Events:
+        CrossrefCitsQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt CrossrefCitsQueue.Arn
+            BatchSize: 10
 
 Outputs:
   ApiUrl:
