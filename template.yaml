@@ -281,7 +281,7 @@ Resources:
   DoiCitsLoader:
     Type: AWS::Serverless::Function
     Properties:
-      ReservedConcurrentExecutions: 50
+      ReservedConcurrentExecutions: 100
       CodeUri: nodeps/
       Handler: src.crossref_loader.lambda_handler
       Environment:
