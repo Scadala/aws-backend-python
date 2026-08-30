@@ -39,19 +39,25 @@ def lambda_handler(event, context):
 
 def handle_item(item):
     doi = item["DOI"].lower()
-    for ref in item.get("reference", []):
-        handle_ref(doi, ref.get("DOI", "").lower())
-
-
-def handle_ref(doi, ref):
-    if not ref:
-        return
-    response = sqs_client.send_message(
-        QueueUrl=os.environ["CROSSREF_CITS_QUEUE_URL"],
-        MessageBody=ref,
-        MessageAttributes={
-            "doi": {"DataType": "String", "StringValue": doi},
-            "ref": {"DataType": "String", "StringValue": ref},
-        },
+    refs = list(
+        {ref["DOI"].lower() for ref in item.get("reference", []) if "DOI" in ref}
     )
-    logger.info("message sent", extra={"doi": doi, "ref": ref, "response": response})
+    for i in range(0, len(refs), 10):
+        handle_batch_refs(doi, refs[i : i + 10])
+
+
+def handle_batch_refs(doi, refs):
+    response = sqs_client.send_message_batch(
+        QueueUrl=os.environ["CROSSREF_CITS_QUEUE_URL"],
+        Entries=[
+            {
+                "Id": str(i),
+                "MessageAttributes": {
+                    "doi": {"DataType": "String", "StringValue": doi},
+                    "ref": {"DataType": "String", "StringValue": ref},
+                },
+            }
+            for i, ref in enumerate(refs)
+        ],
+    )
+    logger.info("batch sent", extra={"doi": doi, "refs": refs, "response": response})

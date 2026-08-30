@@ -265,7 +265,6 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Timeout: 900
-      MemorySize: 1769
       CodeUri: nodeps/
       Handler: src.crossref.lambda_handler
       Environment:
@@ -283,6 +282,7 @@ Resources:
   DoiCitsLoader:
     Type: AWS::Serverless::Function
     Properties:
+      ReservedConcurrentExecutions: 1
       CodeUri: nodeps/
       Handler: src.crossref_loader.lambda_handler
       Environment:
