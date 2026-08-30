@@ -20,7 +20,14 @@ def lambda_handler(event, context):
 
         entry = table_content.get("Item")
         if entry is None:
-            table.put_item(Item={"doi": ref, "cits": [doi]})
+            result = table.put_item(Item={"doi": ref, "cits": [doi]})
+            logger.info("put_item", extra={"result": result, "doi": doi, "ref": ref})
         elif doi not in entry["cits"]:
             entry["cits"].append(doi)
-            table.put_item(Item=entry)
+            result = table.put_item(Item=entry)
+            logger.info("update_item", extra={"result": result, "doi": doi, "ref": ref})
+        else:
+            logger.info(
+                "already exists",
+                extra={"doi": doi, "ref": ref, "cits": entry["cits"]},
+            )
