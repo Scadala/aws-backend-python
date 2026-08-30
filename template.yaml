@@ -264,6 +264,8 @@ Resources:
   DoiCitsCrawler:
     Type: AWS::Serverless::Function
     Properties:
+      Timeout: 900
+      MemorySize: 1769
       CodeUri: nodeps/
       Handler: src.crossref.lambda_handler
       Environment:
