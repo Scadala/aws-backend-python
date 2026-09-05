@@ -2,6 +2,7 @@ import logging
 import os
 
 import boto3
+import simplejson as json
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +14,9 @@ def lambda_handler(event, context):
     logger.info("recieved event", extra={"event": event})
 
     for record in event["Records"]:
-        attributes = record["messageAttributes"]
-        doi = attributes["doi"]["stringValue"]
-        ref = attributes["ref"]["stringValue"]
+        body = json.loads(record["body"])
+        doi = body["doi"]
+        ref = body["ref"]
         table_content = table.get_item(Key={"doi": ref})
 
         entry = table_content.get("Item")

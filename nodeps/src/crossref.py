@@ -2,6 +2,7 @@ import logging
 import os
 
 import boto3
+import simplejson as json
 import urllib3
 
 logger = logging.getLogger(__name__)
@@ -52,11 +53,7 @@ def handle_batch_refs(doi, refs):
         Entries=[
             {
                 "Id": str(i),
-                "MessageBody": "",
-                "MessageAttributes": {
-                    "doi": {"DataType": "String", "StringValue": doi},
-                    "ref": {"DataType": "String", "StringValue": ref},
-                },
+                "MessageBody": json.dumps({"doi": doi, "ref": ref}),
             }
             for i, ref in enumerate(refs)
         ],
