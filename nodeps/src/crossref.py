@@ -52,6 +52,7 @@ def handle_batch_refs(doi, refs):
         Entries=[
             {
                 "Id": str(i),
+                "MessageBody": "",
                 "MessageAttributes": {
                     "doi": {"DataType": "String", "StringValue": doi},
                     "ref": {"DataType": "String", "StringValue": ref},
