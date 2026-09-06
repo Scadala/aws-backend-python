@@ -24,9 +24,11 @@ Globals:
         SEARCH_CACHE_TABLE_NAME: !Ref SearchCache
         DOI2PMID_TABLE_NAME: !Ref Doi2Pmid
         DOI2ADS_TABLE_NAME: !Ref Doi2Ads
+        DOI_CITS_TABLE_NAME: !Ref DoiCits
         PMID_LOOKUP_QUEUE_URL: !Ref PmidLookupQueue
         PMID_DOI_LOOKUP_QUEUE_URL: !Ref PmidDoiLookupQueue
         ADS_DOI_LOOKUP_QUEUE_URL: !Ref AdsDoiLookupQueue
+        CROSSREF_CITS_QUEUE_URL: !Ref CrossrefCitsQueue
 
 Resources:
   PmidLookupQueue:
@@ -34,6 +36,8 @@ Resources:
   PmidDoiLookupQueue:
     Type: AWS::SQS::Queue
   AdsDoiLookupQueue:
+    Type: AWS::SQS::Queue
+  CrossrefCitsQueue:
     Type: AWS::SQS::Queue
   PmidTablev4:
     Type: AWS::DynamoDB::Table
@@ -67,6 +71,18 @@ Resources:
       KeySchema:
         - AttributeName: doi
           KeyType: HASH
+  DoiCits:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      OnDemandThroughput:
+        MaxWriteRequestUnits: 15
+      AttributeDefinitions:
+        - AttributeName: doi
+          AttributeType: S
+      KeySchema:
+        - AttributeName: doi
+          KeyType: HASH
   Doi2Ads:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -77,6 +93,12 @@ Resources:
       KeySchema:
         - AttributeName: doi
           KeyType: HASH
+  CrossrefLastCrawl:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub "CrossrefLastCrawl-${AWS::StackName}"
+      Type: String
+      Value: "0"
   IndexFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -238,6 +260,46 @@ Resources:
             StartingPosition: TRIM_HORIZON
             BatchSize: 100
             Enabled: true
+  DoiCitsCrawler:
+    Type: AWS::Serverless::Function
+    Properties:
+      Timeout: 900
+      CodeUri: nodeps/
+      Handler: src.crossref.lambda_handler
+      Environment:
+        Variables:
+          CROSSREF_LAST_CRAWL_PARAM: !Sub "CrossrefLastCrawl-${AWS::StackName}"
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt CrossrefCitsQueue.QueueName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:PutParameter
+                - ssm:GetParameter
+              Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CrossrefLastCrawl-${AWS::StackName}"
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 day)
+  DoiCitsLoader:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: nodeps/
+      Handler: src.crossref_loader.lambda_handler
+      Environment:
+        Variables:
+          CROSSREF_LAST_CRAWL_PARAM: !Sub "CrossrefLastCrawl-${AWS::StackName}"
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DoiCits
+      Events:
+        CrossrefCitsQueueEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt CrossrefCitsQueue.Arn
+            BatchSize: 1
 
 Outputs:
   ApiUrl:
