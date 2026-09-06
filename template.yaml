@@ -278,6 +278,11 @@ Resources:
                 - ssm:PutParameter
                 - ssm:GetParameter
               Resource: !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/CrossrefLastCrawl-${AWS::StackName}"
+      Events:
+        DailySchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 day)
   DoiCitsLoader:
     Type: AWS::Serverless::Function
     Properties:
