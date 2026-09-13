@@ -44,6 +44,10 @@ jobs:
           --capabilities CAPABILITY_IAM
           --parameter-overrides
           PythonRuntime="python$(cat .python-version)"
+          --tags
+          StackName="$STACK_NAME"
+          Repository=${{ github.repository }}
+          WorkflowFile=${{ github.workflow }}
       - run: >
           echo url="$(
           sam list stack-outputs
