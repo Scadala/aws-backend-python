@@ -53,4 +53,7 @@ def handle_batch_refs(doi, refs):
         InvocationType="Event",
         Payload=json.dumps({"doi": doi, "refs": refs}),
     )
-    logger.info("batch invoked", extra={"doi": doi, "refs": refs, "response": response})
+    logger.info(
+        "batch invoked",
+        extra={"doi": doi, "refs": refs, "status_code": response["StatusCode"]},
+    )
