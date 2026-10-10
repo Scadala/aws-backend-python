@@ -43,8 +43,8 @@ def handle_item(item):
     refs = list(
         {ref["DOI"].lower() for ref in item.get("reference", []) if "DOI" in ref}
     )
-    for i in range(0, len(refs), 10):
-        handle_batch_refs(doi, refs[i : i + 10])
+    if refs:
+        handle_batch_refs(doi, refs)
 
 
 def handle_batch_refs(doi, refs):
