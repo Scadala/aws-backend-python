@@ -55,5 +55,11 @@ def handle_batch_refs(doi, refs):
     )
     logger.info(
         "batch invoked",
-        extra={"doi": doi, "refs": refs, "status_code": response["StatusCode"]},
+        extra={
+            "doi": doi,
+            "refs": refs,
+            "status_code": response["StatusCode"],
+            "full_response": str(response),
+        },
     )
+    assert response["StatusCode"] == 202, "Lambda invocation failed"
