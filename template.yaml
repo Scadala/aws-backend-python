@@ -36,6 +36,8 @@ Resources:
     Type: AWS::SQS::Queue
   AdsDoiLookupQueue:
     Type: AWS::SQS::Queue
+  DoiCitsLoaderDLQ:
+    Type: AWS::SQS::Queue
   PmidTablev4:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -287,6 +289,9 @@ Resources:
     Properties:
       CodeUri: nodeps/
       Handler: src.crossref_loader.lambda_handler
+      DeadLetterQueue:
+        Type: SQS
+        TargetArn: !GetAtt DoiCitsLoaderDLQ.Arn
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref DoiCits
