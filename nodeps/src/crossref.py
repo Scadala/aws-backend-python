@@ -8,7 +8,10 @@ import urllib3
 logger = logging.getLogger(__name__)
 
 os.environ["DOI_CITS_TABLE_NAME"]
-http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
+http = urllib3.PoolManager(
+    headers={"User-Agent": "georgwendorf@gmail.com"},
+    timeout=urllib3.Timeout(connect=5.0, read=30.0),
+)
 
 ssm_client = boto3.client("ssm", region_name="eu-central-1")
 lambda_client = boto3.client("lambda", region_name="eu-central-1")

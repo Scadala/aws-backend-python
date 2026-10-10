@@ -2,11 +2,14 @@ import logging
 import os
 
 import boto3
+from botocore.config import Config
 
 logger = logging.getLogger(__name__)
 
 
-table = boto3.resource("dynamodb").Table(os.environ["DOI_CITS_TABLE_NAME"])
+table = boto3.resource(
+    "dynamodb", config=Config(connect_timeout=1, read_timeout=1)
+).Table(os.environ["DOI_CITS_TABLE_NAME"])
 
 
 def lambda_handler(event, context):
