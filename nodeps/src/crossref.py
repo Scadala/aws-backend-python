@@ -8,10 +8,13 @@ import urllib3
 logger = logging.getLogger(__name__)
 
 os.environ["DOI_CITS_TABLE_NAME"]
-http = urllib3.PoolManager(headers={"User-Agent": "georgwendorf@gmail.com"})
+http = urllib3.PoolManager(
+    headers={"User-Agent": "georgwendorf@gmail.com"},
+    timeout=urllib3.Timeout(connect=5.0, read=30.0),
+)
 
 ssm_client = boto3.client("ssm", region_name="eu-central-1")
-sqs_client = boto3.client("sqs", region_name="eu-central-1")
+lambda_client = boto3.client("lambda", region_name="eu-central-1")
 
 CROSSREF_LAST_CRAWL_PARAM = ssm_client.get_parameter(
     Name=os.environ["CROSSREF_LAST_CRAWL_PARAM"],
@@ -43,19 +46,23 @@ def handle_item(item):
     refs = list(
         {ref["DOI"].lower() for ref in item.get("reference", []) if "DOI" in ref}
     )
-    for i in range(0, len(refs), 10):
-        handle_batch_refs(doi, refs[i : i + 10])
+    if refs:
+        handle_batch_refs(doi, refs)
 
 
 def handle_batch_refs(doi, refs):
-    response = sqs_client.send_message_batch(
-        QueueUrl=os.environ["CROSSREF_CITS_QUEUE_URL"],
-        Entries=[
-            {
-                "Id": str(i),
-                "MessageBody": json.dumps({"doi": doi, "ref": ref}),
-            }
-            for i, ref in enumerate(refs)
-        ],
+    response = lambda_client.invoke(
+        FunctionName=os.environ["DOI_CITS_LOADER_FUNCTION_NAME"],
+        InvocationType="Event",
+        Payload=json.dumps({"doi": doi, "refs": refs}),
     )
-    logger.info("batch sent", extra={"doi": doi, "refs": refs, "response": response})
+    logger.info(
+        "batch invoked",
+        extra={
+            "doi": doi,
+            "refs": refs,
+            "status_code": response["StatusCode"],
+            "full_response": str(response),
+        },
+    )
+    assert response["StatusCode"] == 202, "Lambda invocation failed"

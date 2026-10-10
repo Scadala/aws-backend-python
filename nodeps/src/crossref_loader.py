@@ -2,21 +2,21 @@ import logging
 import os
 
 import boto3
-import simplejson as json
+from botocore.config import Config
 
 logger = logging.getLogger(__name__)
 
 
-table = boto3.resource("dynamodb").Table(os.environ["DOI_CITS_TABLE_NAME"])
+table = boto3.resource(
+    "dynamodb", config=Config(connect_timeout=1, read_timeout=1)
+).Table(os.environ["DOI_CITS_TABLE_NAME"])
 
 
 def lambda_handler(event, context):
     logger.info("recieved event", extra={"event": event})
 
-    for record in event["Records"]:
-        body = json.loads(record["body"])
-        doi = body["doi"]
-        ref = body["ref"]
+    doi = event["doi"]
+    for ref in event["refs"]:
         table_content = table.get_item(Key={"doi": ref})
 
         entry = table_content.get("Item")
