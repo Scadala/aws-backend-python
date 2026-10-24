@@ -1,3 +1,5 @@
+'"""Crossref Lambda handler for processing DOI references."""'
+
 import logging
 import os
 
