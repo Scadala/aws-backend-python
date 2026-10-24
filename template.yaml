@@ -270,10 +270,10 @@ Resources:
       Environment:
         Variables:
           CROSSREF_LAST_CRAWL_PARAM: !Sub "CrossrefLastCrawl-${AWS::StackName}"
-          DOI_CITS_LOADER_FUNCTION_NAME: !Ref DoiCitsLoader
+          DOI_CITS_LOADER_FUNCTION_NAME: !Sub "${AWS::StackName}-DoiCitsLoader"
       Policies:
         - LambdaInvokePolicy:
-            FunctionName: !Ref DoiCitsLoader
+            FunctionName: !Sub "${AWS::StackName}-DoiCitsLoader"
         - Statement:
             - Effect: Allow
               Action:
@@ -288,6 +288,7 @@ Resources:
   DoiCitsLoader:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: !Sub "${AWS::StackName}-DoiCitsLoader"
       CodeUri: nodeps/
       Handler: src.crossref_loader.lambda_handler
       DeadLetterQueue:
